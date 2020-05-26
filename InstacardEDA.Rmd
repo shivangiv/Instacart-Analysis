@@ -5,8 +5,18 @@ date: "5/26/2020"
 output: html_document
 ---
 
+Problem Statement
+The Instacart data set is anonymized and contains samples of over 3 million grocery orders from 200,000+ Instacart users. The objective is to predict which previously purchased products (prior orders) will be in a user's next order (train and test orders) in order to explore the kinds of food Americans eat.
+
 ```{r}
 library(dplyr)
+library(tidyverse)
+
+aisles<-read_csv(file.choose()) 
+departments<-
+order_products_prior
+
+
 
 aisles<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/aisles.csv")
 departments<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/departments.csv")
@@ -14,8 +24,23 @@ order_products_prior<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Da
 order_products_train<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/order_products__train.csv")
 orders<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/orders.csv")
 products<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/products.csv")
+
+head(order_products_prior)
 ```
 
+### What did you do with the data in the context of exploration?
+
+1. When do people order the most during the day? - shivangi
+2. Frequency of reordering? - venus
+3. Most popular products? - venus
+4. Most popular department and most popular aisle? -rian
+
+### What did you find? Why does that matter? 
+
+### What would your proposed next steps be? 
+- Apriori association rule algorithm
+- classification- what are products are most likely to be reordered for each user?
+- 
 
 ```{r}
 
