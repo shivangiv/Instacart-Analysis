@@ -6,11 +6,17 @@ output: html_document
 ---
 
 Problem Statement
-The Instacart data set is anonymized and contains samples of over 3 million grocery orders from 200,000+ Instacart users from Kaggle. The objective is to predict which previously purchased products (prior orders) will be in a user's next order (train and test orders) in order to explore the kinds of food Americans eat.
+The Instacart data set is anonymized and contains samples of over 3 million grocery orders from 200,000+ Instacart users from Kaggle. 
+The objective is to predict which previously purchased products (prior orders) will be in a user's next order (train and test orders) in order to explore the kinds of food Americans eat.
 
 ```{r}
 library(dplyr)
 library(tidyverse)
+library(funModeling)
+library(psych)
+library(ggplot2)
+library(plyr)
+
 aisles<-read_csv(file.choose())
 departments<-read_csv(file.choose())
 order_products_prior<-read_csv(file.choose())
@@ -28,7 +34,6 @@ products<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/in
 ```
 
 
-
 #Create a new datafram named instacart by merging all datasets through inner join function, which only retains rows in all datasets.Here, we use order_products_prior dataframe includes only prior orders, so the new dataframe instacart will contain only these observations as well. 
 ```{r}
 df<-list(aisles,departments,order_products_train,order_products_prior,orders,products)
@@ -40,11 +45,12 @@ instacart <- order_products_prior %>%
   inner_join(departments, by = c("department_id"))
 
 summary(instacart)
-
+head(instacart)
+glimpse(instacart)
+status(instacart)
 ```
 
 ### What did you do with the data in the context of exploration?
-
 1. When do people order the most during the day? - shivangi
 2. Frequency of reordering? - venus
 3. Most popular products? - venus
@@ -55,17 +61,53 @@ summary(instacart)
 ### What would your proposed next steps be? 
 - Apriori association rule algorithm
 - classification- what are products are most likely to be reordered for each user?
-- 
 
+
+
+EDA - Question2: What is the frequency of reordering? 
+When exploring the frequency of reordering, first we filter prior eval_set and select data of days_since_prior_order, then we also clease all the na value from the dataset. 
+We find out in this 3,000,000+ dataset, the average days of users who reorder their groceries is from 7 to 11 days. Many customers reorder after 7 days or 30 days. 
+According to each customer's reordering behavior and how many days they would reorder through instacart,we can predict their next ordering day. Therefore, based on these analysis, it can provide suggestions to retails and suppliers which would be helpful for their purchase sales inventory stategies.
+In the future, we still need to find out the reason why a lot customers reorder after 30 days and what products do they get then we can draw the conculsion. Also, we will find out the correlation among the frequency of reordering, order hour of day, and ordering products and tracking customer consuming behaviors.
 
 ```{r}
+orders<-filter(orders,orders$eval_set=="prior")
+days<-na.omit(orders$days_since_prior_order)
+days<-as.data.frame(days)
+summary(days)
+describe(days)
 
+ggplot(data=days, aes(x=days))+ 
+  geom_boxplot(mapping=aes("var",days),colour="black",fill="lightblue")+
+  xlab("")+
+  ylab("days_since_prior_order")+
+  ggtitle("Days since Prior Order Boxplot")
+
+ggplot(data=days, aes(x=days))+ 
+  geom_histogram(aes(y =..density..),stat = "bin", bins= 30, colour="black", fill="lavenderblush")+
+  geom_density(alpha=.2,fill="plum")+
+  ggtitle("Days since Prior Order Density Plot")
 
 ```
 
-## 
+
+EDA - Question3: What are the most popular products?
+By descending ordering products that are added into cart order, we find out the top 10 popular products out of 49,688 products as shown below. Surprisely, in our analysis, the top No.1 popular product is Organic 100% Grapefruit Juice.
+It is important to find out what products people like to order and order the most, by doing so, we can have better prediction and preparation on the stock of these products. 
+In our next steps, we will find out which departmants and aisles these products belong to, and how often do these top products reorder?
 
 ```{r}
+pop_products<-inner_join(order_products_prior, products, by =c("product_id"))
+pop_products<-as.data.frame(pop_products)
+pop_products<-pop_products %>% select(5, 3)
+top_products<-head(arrange(pop_products,desc(pop_products$add_to_cart_order)), n = 10)
+top_products
+
+ggplot(top_products)+
+  geom_bar(aes(reorder(product_name,-add_to_cart_order),add_to_cart_order, fill= add_to_cart_order),
+           stat = "identity", color = "grey", fill = "slateblue")+
+  labs(title = "Most Popular Products Added to Cart Order", x = "product names", y = "add to cart order") +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1))
 
 ```
 
