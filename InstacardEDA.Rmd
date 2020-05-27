@@ -63,6 +63,7 @@ status(instacart)
 - classification- what are products are most likely to be reordered for each user?
 
 
+<<<<<<< HEAD
 
 EDA - Question2: What is the frequency of reordering? 
 When exploring the frequency of reordering, first we filter prior eval_set and select data of days_since_prior_order, then we also clease all the na value from the dataset. 
@@ -95,6 +96,49 @@ EDA - Question3: What are the most popular products?
 By descending ordering products that are added into cart order, we find out the top 10 popular products out of 49,688 products as shown below. Surprisely, in our analysis, the top No.1 popular product is Organic 100% Grapefruit Juice.
 It is important to find out what products people like to order and order the most, by doing so, we can have better prediction and preparation on the stock of these products. 
 In our next steps, we will find out which departmants and aisles these products belong to, and how often do these top products reorder?
+=======
+### Pre-processing
+```{r}
+
+# Taking a quick look at the data
+head(aisles)
+head(departments)
+head(order_products_prior)
+head(order_products_train)
+head(orders)
+head(products)
+
+#Remove missing values
+aisles<-drop_na(aisles)
+departments<-drop_na(departments)
+order_products_prior<-drop_na(order_products_prior)
+order_products_train<-drop_na(order_products_train)
+orders<-drop_na(orders)
+products<-drop_na(products)
+
+dim(aisles)
+dim(departments)
+dim(order_products_prior)
+dim(order_products_train)
+dim(orders)
+dim(products)
+
+# Check if all classes ie data types is correct
+sapply(aisles,class)
+sapply(departments,class)
+sapply(order_products_prior,class)
+sapply(order_products_train,class)
+sapply(orders,class)
+orders<-orders %>%mutate(order_hour_of_day=as.numeric(order_hour_of_day))
+orders
+sapply(products,class)
+
+
+
+```
+
+### 1. When do people order the most during the day?
+>>>>>>> 94ab80d767ac6ca329316cac56e54bc9f311b2f8
 
 ```{r}
 pop_products<-inner_join(order_products_prior, products, by =c("product_id"))
@@ -109,5 +153,13 @@ ggplot(top_products)+
   labs(title = "Most Popular Products Added to Cart Order", x = "product names", y = "add to cart order") +
   theme(axis.text.x = element_text(angle = 65, hjust = 1))
 
+orders%>%
+  group_by(order_hour_of_day)%>%
+  summarise(Number_of_Orders=n())%>%
+  ggplot(aes(y=Number_of_Orders, x=order_hour_of_day, fill=Number_of_Orders)) + geom_col()+ coord_cartesian(xlim = c(0, 24)) 
+
 ```
+Clearly, most orders are placed during 9am to 5 pm.
+
+
 
