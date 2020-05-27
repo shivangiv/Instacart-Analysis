@@ -63,6 +63,7 @@ status(instacart)
 - classification- what are products are most likely to be reordered for each user?
 
 
+<<<<<<< HEAD
 
 EDA - Question2: What is the frequency of reordering? 
 When exploring the frequency of reordering, first we filter prior eval_set and select data of days_since_prior_order, then we also clease all the na value from the dataset. 
@@ -110,4 +111,71 @@ ggplot(top_products)+
   theme(axis.text.x = element_text(angle = 65, hjust = 1))
 
 ```
+
+=======
+### Pre-processing
+```{r}
+
+# Taking a quick look at the data
+head(aisles)
+head(departments)
+head(order_products_prior)
+head(order_products_train)
+head(orders)
+head(products)
+
+#Remove missing values
+aisles<-drop_na(aisles)
+departments<-drop_na(departments)
+order_products_prior<-drop_na(order_products_prior)
+order_products_train<-drop_na(order_products_train)
+orders<-drop_na(orders)
+products<-drop_na(products)
+
+dim(aisles)
+dim(departments)
+dim(order_products_prior)
+dim(order_products_train)
+dim(orders)
+dim(products)
+
+# Check if all classes ie data types is correct
+sapply(aisles,class)
+sapply(departments,class)
+sapply(order_products_prior,class)
+sapply(order_products_train,class)
+sapply(orders,class)
+orders<-orders %>%mutate(order_hour_of_day=as.numeric(order_hour_of_day))
+orders
+sapply(products,class)
+
+
+
+```
+
+### 1. When do people order the most during the day?
+>>>>>>> 94ab80d767ac6ca329316cac56e54bc9f311b2f8
+
+```{r}
+pop_products<-inner_join(order_products_prior, products, by =c("product_id"))
+pop_products<-as.data.frame(pop_products)
+pop_products<-pop_products %>% select(5, 3)
+top_products<-head(arrange(pop_products,desc(pop_products$add_to_cart_order)), n = 10)
+top_products
+
+ggplot(top_products)+
+  geom_bar(aes(reorder(product_name,-add_to_cart_order),add_to_cart_order, fill= add_to_cart_order),
+           stat = "identity", color = "grey", fill = "slateblue")+
+  labs(title = "Most Popular Products Added to Cart Order", x = "product names", y = "add to cart order") +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1))
+
+orders%>%
+  group_by(order_hour_of_day)%>%
+  summarise(Number_of_Orders=n())%>%
+  ggplot(aes(y=Number_of_Orders, x=order_hour_of_day, fill=Number_of_Orders)) + geom_col()+ coord_cartesian(xlim = c(0, 24)) 
+
+```
+Clearly, most orders are placed during 9am to 5 pm.
+
+
 
