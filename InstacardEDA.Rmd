@@ -6,11 +6,18 @@ output: html_document
 ---
 
 Problem Statement
-The Instacart data set is anonymized and contains samples of over 3 million grocery orders from 200,000+ Instacart users. The objective is to predict which previously purchased products (prior orders) will be in a user's next order (train and test orders) in order to explore the kinds of food Americans eat.
+The Instacart data set is anonymized and contains samples of over 3 million grocery orders from 200,000+ Instacart users from Kaggle. The objective is to predict which previously purchased products (prior orders) will be in a user's next order (train and test orders) in order to explore the kinds of food Americans eat.
 
 ```{r}
 library(dplyr)
 library(tidyverse)
+aisles<-read_csv(file.choose())
+departments<-read_csv(file.choose())
+order_products_prior<-read_csv(file.choose())
+order_products_train<-read_csv(file.choose())
+orders<-read_csv(file.choose())
+products<-read_csv(file.choose())
+
 aisles<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/aisles.csv")
 departments<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/departments.csv")
 order_products_prior<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/order_products__prior.csv")
@@ -18,15 +25,41 @@ order_products_train<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Da
 orders<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/orders.csv")
 products<-read_csv("/Users/shivangi/Documents/Analytics/Quarter 3/Data Mining/instacart-market-basket-analysis/products.csv")
 
-head(order_products_prior)
 ```
 
-When do people order the most during the day?
-Frequency of reordering?
-Most popular products?
-Most popular department, most popular aisle?
+
+
+#Create a new datafram named instacart by merging all datasets through inner join function, which only retains rows in all datasets.Here, we use order_products_prior dataframe includes only prior orders, so the new dataframe instacart will contain only these observations as well. 
+```{r}
+df<-list(aisles,departments,order_products_train,order_products_prior,orders,products)
+
+instacart <- order_products_prior %>%
+  inner_join(orders, by = c("order_id")) %>%
+  inner_join(products, by = c("product_id")) %>%
+  inner_join(aisles, by = c("aisle_id")) %>%
+  inner_join(departments, by = c("department_id"))
+
+summary(instacart)
+
+```
+
+### What did you do with the data in the context of exploration?
+
+1. When do people order the most during the day? - shivangi
+2. Frequency of reordering? - venus
+3. Most popular products? - venus
+4. Most popular department and most popular aisle? -rian
+
+### What did you find? Why does that matter? 
+
+### What would your proposed next steps be? 
+- Apriori association rule algorithm
+- classification- what are products are most likely to be reordered for each user?
+- 
+
 
 ```{r}
+
 
 ```
 
