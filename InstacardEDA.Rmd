@@ -170,8 +170,125 @@ ggplot(top_products)+
   theme(axis.text.x = element_text(angle = 65, hjust = 1))
 
 ```
+```{r}
+install.packages("pacman")
+pacman::p_load(dplyr, data.table, ggplot2, knitr, stringr, DT, treemap) 
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(stringr)
+library(DT)
+library(treemap)
 
+aisles <- fread('/Users/rian/Downloads/Instacart-Analysis-master/instacart-market-basket-analysis/aisles.csv')
+departments <- fread('/Users/rian/Downloads/Instacart-Analysis-master/instacart-market-basket-analysis/departments.csv')
+orders <- fread('/Users/rian/Downloads/Instacart-Analysis-master/instacart-market-basket-analysis/orders.csv')
+order_products_train <- fread('/Users/rian/Downloads/Instacart-Analysis-master/instacart-market-basket-analysis/order_products__prior.csv')
+order_products_prior <- fread('/Users/rian/Downloads/Instacart-Analysis-master/instacart-market-basket-analysis/order_products__prior.csv')
+products <- fread('/Users/rian/Downloads/Instacart-Analysis-master/instacart-market-basket-analysis/products.csv')
+```
 
+```{r}
+glimpse(aisles)
+glimpse(departments)
+glimpse(order_products_train)
+glimpse(order_products_prior)
+glimpse(orders)
+glimpse(products)
+```        
+
+```{r}
+#Data Preparation
+#We recode and convert character variables to factors.
+orders <- orders %>% mutate(order_hour_of_day = as.numeric(order_hour_of_day), eval_set = as.factor(eval_set))
+products <- products %>% mutate(product_name = as.factor(product_name))
+aisles <- aisles %>% mutate(aisle = as.factor(aisle))
+departments <- departments %>% mutate(department = as.factor(department))
+```
+
+```{r}
+#Data Preparation
+tmp <- merge(orders, order_products_prior)
+tmp2 <-  merge(tmp, products, by="product_id")
+head(tmp2)
+```
+
+### Which Users Reorder?
+
+To recommend the next item an user is most likely to add to his/ her cart, we have to understand how each group of users use the service. It becomes a classification problem that we can explore later, but for now we wanted to see how different users purchase products, how there can be correlation between their total number of orders, days since prior order, no. of items they add to their cart and their probability of reordering.   
+
+```{r}
+#user clusters
+n_items_per_order <- tmp2 %>% group_by(order_id) %>% mutate(n_items=max(add_to_cart_order))
+user <- n_items_per_order %>% 
+  group_by(user_id) %>% 
+  mutate(product_name = as.numeric(days_since_prior_order)) %>%
+  summarize(total_orders = n_distinct(order_id), avg_days_since_prior_order= mean(days_since_prior_order, na.rm = TRUE), avg_no_items = mean(n_items), avg_reorder=mean(reordered))
+head(user)
+```
+
+So what we can see from the table the people who have ordered more number of times, they have higher possibility of reordering the same products and they usually order after every three to four weeks. Which means that the products that gets ordered more will also have the higher probablity of being reordered. 
+```{r}
+order_products_train %>% 
+  group_by(product_id) %>% 
+  summarize(proportion_reordered = mean(reordered), n=n()) %>%
+  ggplot(aes(x=n,y=proportion_reordered))+
+  geom_point()+
+  geom_smooth(color="red")+
+  coord_cartesian(xlim=c(0,2000))
+
+```
+
+### Most popular department and most popular aisle?
+
+So we wanted to see which are the most popular departments and aisles, as aparently these are the same department and aisles where will most reorder must occur. Later we can also find if which other product has the more probablity of being purchased with other. We can find that using association rule mining. To see the most popular departments and aisles we create a treemap where the size of the boxes shows the number of sales.
+
+```{r}
+
+tmp3 <- products %>% group_by(department_id, aisle_id) %>% summarize(n=n())
+tmp3 <- tmp3 %>% left_join(departments,by="department_id")
+tmp3 <- tmp3 %>% left_join(aisles,by="aisle_id")
+
+product_portfolio <-order_products_train %>% 
+  group_by(product_id) %>% 
+  summarize(count=n()) %>% 
+  left_join(products,by="product_id") %>% 
+  ungroup() %>% 
+  group_by(department_id,aisle_id) %>% 
+  summarize(sumcount = sum(count)) %>% 
+  left_join(tmp3, by = c("department_id", "aisle_id")) %>% 
+  mutate(onesize = 1)
+
+treemap(product_portfolio,index=c("department","aisle"),vSize="sumcount",title="",palette="Set3",border.col="#FFFFFF")
+```
+
+What we can see is produce, diary eggs are the most popular departments followed by snacks, pantry and others. But talking about departments, organic and non organic sector divides US consumers in a large way these days. So it will be interesting to see which products get most reordered. But at first we take a look at ration between the number of organic and non-organic foods.
+```{r}
+products <- products %>% 
+    mutate(organic=ifelse(str_detect(str_to_lower(products$product_name),'organic'),"organic","not organic"), organic= as.factor(organic))
+    
+Organic_or_not <- order_products_train %>% 
+  left_join(products, by="product_id") %>% 
+  group_by(organic) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = count/sum(count))
+head(Organic_or_not)
+Organic_or_not %>% 
+  ggplot(aes(x=organic,y=count, fill=organic))+
+  geom_bar(stat="identity")
+```
+
+So what we notice is the amount og non organic brands is way higher, as it is cheaper to produce and demand must be high as well. Then we try to find out which kind gets most reordered.
+
+```{r}
+reorder_organic_ornot <- order_products_train %>% left_join(products,by="product_id") %>% group_by(organic) %>% summarize(mean_reordered = mean(reordered))
+head(reorder_organic_ornot)
+reorder_organic_ornot %>% 
+  ggplot(aes(x=organic,fill=organic,y=mean_reordered))+geom_bar(stat="identity")
+```
+
+What we get to see is organic foods are reordered in a much higher quantity. It could be because the people who active look for organic brands, they must have a much higher brand loyalty which makes it more prbable to be reordered.
 
 
 
