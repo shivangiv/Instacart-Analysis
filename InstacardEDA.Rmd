@@ -58,6 +58,13 @@ library(tidyverse)
 library(funModeling)
 library(psych)
 library(plyr)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(stringr)
+library(DT)
+library(treemap)
 
 aisles<-read_csv("instacart-market-basket-analysis/aisles.csv")
 departments<-read_csv("instacart-market-basket-analysis/departments.csv")
@@ -117,8 +124,12 @@ orders<-orders %>%mutate(order_hour_of_day=as.numeric(order_hour_of_day))
 orders
 sapply(products,class)
 
-
-
+#Data Preparation
+#We recode and convert character variables to factors.
+orders <- orders %>% mutate(order_hour_of_day = as.numeric(order_hour_of_day), eval_set = as.factor(eval_set))
+products <- products %>% mutate(product_name = as.factor(product_name))
+aisles <- aisles %>% mutate(aisle = as.factor(aisle))
+departments <- departments %>% mutate(department = as.factor(department))
 ```
 
 <br><br>
@@ -205,15 +216,9 @@ ggplot(top_products)+
 
 ```
 
+### 4. Which Users Reorder?
 
-```{r}
-#Data Preparation
-#We recode and convert character variables to factors.
-orders <- orders %>% mutate(order_hour_of_day = as.numeric(order_hour_of_day), eval_set = as.factor(eval_set))
-products <- products %>% mutate(product_name = as.factor(product_name))
-aisles <- aisles %>% mutate(aisle = as.factor(aisle))
-departments <- departments %>% mutate(department = as.factor(department))
-```
+To recommend the next item an user is most likely to add to his/ her cart, we have to understand how each group of users use the service. It becomes a classification problem that we can explore later, but for now we wanted to see how different users purchase products, how there can be correlation between their total number of orders, days since prior order, no. of items they add to their cart and their probability of reordering.   
 
 ```{r}
 #Data Preparation
@@ -221,11 +226,6 @@ tmp <- merge(orders, order_products_prior)
 tmp2 <-  merge(tmp, products, by="product_id")
 head(tmp2)
 ```
-
-### Which Users Reorder?
-
-To recommend the next item an user is most likely to add to his/ her cart, we have to understand how each group of users use the service. It becomes a classification problem that we can explore later, but for now we wanted to see how different users purchase products, how there can be correlation between their total number of orders, days since prior order, no. of items they add to their cart and their probability of reordering.   
-
 ```{r}
 #user clusters
 n_items_per_order <- tmp2 %>% group_by(order_id) %>% mutate(n_items=max(add_to_cart_order))
@@ -254,7 +254,7 @@ order_products_train %>%
 
 ```
 
-#### Most popular department and most popular aisle?
+#### 5. Most popular department and most popular aisle?
 
 So we wanted to see which are the most popular departments and aisles, as aparently these are the same department and aisles where will most reorder must occur. Later we can also find if which other product has the more probablity of being purchased with other. We can find that using association rule mining. To see the most popular departments and aisles we create a treemap where the size of the boxes shows the number of sales.
 
