@@ -1,0 +1,93 @@
+---
+title: "InstacartRegressionModels"
+author: "Shivangi Vashi"
+date: "5/29/2020"
+output: html_document
+---
+<center>
+
+
+### ALY 6040 Data Mining Applications
+### Assignment 2: Instacart Linear and Logistic Regression Model
+### Shivangi Vashi
+### Yihong Qiu
+### Md Tajrianul Islam
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+  
+### Instructor: Kasun Samarasinghe
+### Spring 2020
+### May 29 2020
+### Northeastern University
+</center>
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+
+<style>
+body {
+text-align: justify}
+</style>
+
+<center>
+$\LARGE Introduction$  </center>
+
+This week we are
+
+```{r}
+library(plyr)
+library(tidyverse)
+library(data.table)
+
+#using fread because it reads data very fast
+aisles<-fread("instacart-market-basket-analysis/aisles.csv")
+departments<-fread("instacart-market-basket-analysis/departments.csv")
+order_products_prior<-fread("instacart-market-basket-analysis/order_products__prior.csv")
+order_products_train<-fread("instacart-market-basket-analysis/order_products__train.csv")
+orders<-fread("instacart-market-basket-analysis/orders.csv")
+products<-fread("instacart-market-basket-analysis/products.csv")
+
+head(orders)
+head(order_products_prior)
+head(order_products_train)
+orders
+dim(orders)
+dim(order_products_prior)
+```
+
+
+### Data Wrangling
+```{r}
+
+
+set.seed(1)
+user_fraction <- 0.1
+users <- unique(orders$user_id)
+sample_users <- sample(users, round(user_fraction * length(users)))
+
+cat('Number of orders (before): ', nrow(orders))
+orders <- orders[user_id %in% sample_users]
+cat('Number of orders (after): ', nrow(orders))
+orders
+unique(orders$user_id)
+
+
+order_products_prior<-order_products_prior%>%semi_join(orders)
+order_products_train<-order_products_train%>%semi_join(orders)
+dim(order_products_prior)
+dim(order_products_train)
+```
+
+
+
+### Logistic Regression Model
+```{r}
+
+```
+
+
