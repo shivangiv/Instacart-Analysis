@@ -43,6 +43,8 @@ This week we are
 library(plyr)
 library(tidyverse)
 library(data.table)
+library(ggplot2)
+library(ggcorrplot)
 
 #using fread because it reads data very fast
 aisles<-fread("instacart-market-basket-analysis/aisles.csv")
@@ -79,23 +81,23 @@ unique(orders$user_id)
 
 
 order_products_prior<-order_products_prior%>%semi_join(orders)
-order_products_prior<-drop_na(order_products_prior)
 order_products_train<-order_products_train%>%semi_join(orders)
-order_products_train<-drop_na(order_products_train)
 dim(order_products_prior)
 dim(order_products_train)
 ```
 
 ### Predictors
 ```{r}
-summary(order_products_prior)
+OrderProductPrior<-orders%>%inner_join(order_products_prior)
+OrderProductPrior<-drop_na(OrderProductPrior)
+OrderProductPrior<-OrderProductPrior[-c(3)]
 
-lm.fit <- lm(formula = order_number~. data= order_products_prior)
+#correlation matrix to find correlations in the data
+corr_OrderProductPrior<-as.data.frame(cor(OrderProductPrior))
 
-lm.fit <- lm(formula =order_number~add_to_cart_order+add_to_cart_order+ order_dow+order_hour_of_day+
-             days_since_prior_order , data = order_products_prior) 
-
-summary(lm.fit)
+#plotting correlation matrix
+ggcorrplot(corr_OrderProductPrior,hc.order = TRUE, type = "lower", outline.col = "purple", 
+           ggtheme = theme_gray,lab = TRUE) + ggtitle("Correlation Matrix for OrderProductPrior")
 
 ```
 
