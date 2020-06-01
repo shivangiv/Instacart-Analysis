@@ -58,6 +58,7 @@ head(order_products_train)
 orders
 dim(orders)
 dim(order_products_prior)
+summary(orders)
 ```
 
 
@@ -78,12 +79,25 @@ unique(orders$user_id)
 
 
 order_products_prior<-order_products_prior%>%semi_join(orders)
+order_products_prior<-drop_na(order_products_prior)
 order_products_train<-order_products_train%>%semi_join(orders)
+order_products_train<-drop_na(order_products_train)
 dim(order_products_prior)
 dim(order_products_train)
 ```
 
+### Predictors
+```{r}
+summary(order_products_prior)
 
+lm.fit <- lm(formula = order_number~. data= order_products_prior)
+
+lm.fit <- lm(formula =order_number~add_to_cart_order+add_to_cart_order+ order_dow+order_hour_of_day+
+             days_since_prior_order , data = order_products_prior) 
+
+summary(lm.fit)
+
+```
 
 ### Logistic Regression Model
 ```{r}
