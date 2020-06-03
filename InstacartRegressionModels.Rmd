@@ -100,10 +100,43 @@ ggcorrplot(corr_OrderProductPrior,hc.order = TRUE, type = "lower", outline.col =
            ggtheme = theme_gray,lab = TRUE) + ggtitle("Correlation Matrix for OrderProductPrior")
 
 ```
+### Linear Regression Model
+An important part of the business is predicting how many of what products will be ordered at what hour. As Instacart is more of delivery service, it is important to know when the orders are coming as it may help different business decisions such as number of shoppers they will need at certain hours of certain days, also for market basket it is important to keep their shelves stocked up. 
 
-### Logistic Regression Model
 ```{r}
-
+OrderProductPrior_lm<-orders%>%inner_join(order_products_prior)%>%inner_join(products)
+OrderProductPrior_lm<-drop_na(OrderProductPrior_lm)
+OrderProductPrior_lm<-OrderProductPrior_lm[-c(3)]
+OrderProductPrior_lm
+OrderHour_lm <- OrderProductPrior_lm[-c(1,2,7,10)]
 ```
+
+```{r}
+#Fitting Linear Model
+OrderHour_lm <- lm(order_hour_of_day ~ order_number + order_dow + days_since_prior_order + add_to_cart_order + reordered + aisle_id + department_id, data = OrderHour_lm)
+summary(OrderHour_lm)
+```
+### Logistic Regression
+
+Then we will be predicting the chances of a user reordering. As we know from our EDA, Instacart has a lot of loyal customers, who order bi-weekly or monthly. While ordering they also reorder a lot of the same products. So predicting whether a user will reorder or not, may help us later to understand what products can recommend while they are purchasing. 
+
+```{r}
+user <- OrderProductPrior_lm %>% 
+  group_by(user_id) %>% 
+  mutate(days_since_prior_order = as.numeric(days_since_prior_order)) %>%
+  transmute(total_orders = n_distinct(order_id), avg_days_since_prior_order= mean(days_since_prior_order, na.rm = TRUE), avg_no_items = max(add_to_cart_order), reordered= reordered, order_day = order_dow, product_id=product_id)
+user
+reorder_log <- user[-c(1)]
+reorder_log
+```
+```{r}
+#Fitting a binary logistic regression
+reorder_log <- glm(reordered ~., data = reorder_log, family = "binomial")
+#Model summary
+summary(reorder_log)
+```
+
+
+
 
 
