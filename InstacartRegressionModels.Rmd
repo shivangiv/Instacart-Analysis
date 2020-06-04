@@ -18,7 +18,7 @@ output: html_document
   
 ### Instructor: Kasun Samarasinghe
 ### Spring 2020
-### May 29 2020
+### June 3 2020
 ### Northeastern University
 </center>
 
@@ -36,10 +36,18 @@ text-align: justify}
 
 <center>
 $\LARGE Introduction$  </center>
-
+<br><br>
 This week we are going to generate a linear and a logistic regression model to predict an outcome of our dataset, show the results of the model performance and improve the model by using regularization and address multicollinearity in the data.
 
-```{r}
+We are working with Instacart Market Basket Analysis Data. The data consists of information about the products, aisles, departments, and orders. There are millions of orders placed by users. the Train and Prior table contain a binary variable-'reordered' which is 1 if the product was reordered and 0 if it was not. Orders table contains more information on what day of the week, hour, etc the order was placed, and also how many days prior had an order been placed.
+
+We will be creating Linear and Logistic regression models to predict the Order hour of day and reorder variables respectively. While Association Rule Mining, ie the Apriori algorithm is more suited for this dataset, the varied nature of the dataset allows us to experiment with other statistical models such as Linear and Logisitic Regression.
+
+
+<br>
+
+Reading the dataset,importing relevant libraries.
+```{r message=FALSE, warning=FALSE}
 
 library(plyr)
 library(tidyverse)
@@ -57,18 +65,18 @@ order_products_train<-fread("instacart-market-basket-analysis/order_products__tr
 orders<-fread("instacart-market-basket-analysis/orders.csv")
 products<-fread("instacart-market-basket-analysis/products.csv")
 
-head(orders)
-head(order_products_prior)
-head(order_products_train)
-orders
-dim(orders)
-dim(order_products_prior)
-summary(orders)
+
 ```
 
+<br><br>
 
-### Data Wrangling
-```{r}
+<center>
+$\large Data~Wrangling$ </center>
+
+<br><br>
+
+Since the dataset is very large, with Prior orders having 32 million rows, we subset the data to reduce calculation time. We did this by randomly sampling users, then only keeping their orders and prior order information by performing a semi join with the order prior and train datasets.
+```{r message=FALSE}
 set.seed(1)
 user_fraction <- 0.1
 users <- unique(orders$user_id)
@@ -77,7 +85,6 @@ sample_users <- sample(users, round(user_fraction * length(users)))
 cat('Number of orders (before): ', nrow(orders))
 orders <- orders[user_id %in% sample_users]
 cat('Number of orders (after): ', nrow(orders))
-orders
 unique(orders$user_id)
 
 order_products_prior<-order_products_prior%>%semi_join(orders)
@@ -86,8 +93,17 @@ dim(order_products_prior)
 dim(order_products_train)
 ```
 
-### Correlation Matrix 
+
+<center>
+$\LARGE Analysis$  </center>
+<br><br>
+
+#### Correlation Matrix 
+
+<br>
 Next, we try to find the correlations among instacart market basket order variables and see which predictors are highly correlated. As we can see from the correlation plot shown below, the correlations are very weak in this matrix.
+This is expected, since we know that a product being reordered is very dependent on prior orders, more than these external variables, but it is still worth exploring.
+<br>
 ```{r}
 OrderProductPrior<-orders%>%inner_join(order_products_prior)
 OrderProductPrior<-drop_na(OrderProductPrior)
@@ -101,30 +117,42 @@ ggcorrplot(corr_OrderProductPrior,hc.order = TRUE, type = "lower", outline.col =
            ggtheme = theme_gray,lab = TRUE) + ggtitle("Correlation Matrix for OrderProductPrior")
 
 ```
+<br><br>
 
-### Linear Regression Model
+
+#### Linear Regression Model
+<br>
+
 An important part of the business is predicting how many of what products will be ordered at what hour. As Instacart is more of delivery service, it is important to know when the orders are coming as it may help different business decisions such as number of shoppers they will need at certain hours of certain days, also for market basket it is important to keep their shelves stocked up. 
-
+<br>
 ```{r}
+## Preparing data for modelling
 OrderProductTrain_lm<-orders%>%inner_join(order_products_train)%>%inner_join(products)
 OrderProductTrain_lm<-drop_na(OrderProductTrain_lm)
 OrderProductTrain_lm<-OrderProductTrain_lm[-c(3)]
 OrderProductTrain_lm
 OrderHour <- OrderProductTrain_lm[-c(1,2,7,10)]
+
+order_products_prior_logreg<-orders%>%inner_join(order_products_prior)%>%inner_join(products)
+
+order_products_prior_logreg<-drop_na(order_products_prior_logreg)
+order_products_prior_logreg<-order_products_prior_logreg[-c(3)]
 ```
-
+<br>
 To improve the accuracy, we add more variables to improve our accuracy. We create a multiple linear regression model with variables order_number, order_dow, days_since_prior_order, add_to_cart_order, reordered, aisle_id, department_id.
-
+<br>
 ```{r}
 #Fitting Linear Model
 OrderHour_lm <- lm(order_hour_of_day ~ order_number + order_dow + days_since_prior_order + add_to_cart_order + reordered + aisle_id + department_id, data = OrderHour)
 summary(OrderHour_lm)
 ```
+<br>
+As we can see from R-squared above 0.0006175 is very low. Then we try to do backward elimination and k-cross validation to improve our model in the next steps.
 
-As we can see from R-squared above 0.00212 is very low. Then we try to do backward elimination and k-cross validation to improve our model in the next steps.
-
-
+<br>
+#### Backward elimination to address multicollinearity
 We perform backward elimination using stepAIC and regsubsets() which shows us that for a model with maximum allowed variables 7, which variables should be selected when nvar=1:7. ie, if the model has to have 1 feature, which feature should be selected, if the model has to have 2 features, what makes the best 2 feature model, and so on.
+<br>
 
 ```{r}
 #Backward elimination of features showing best features for nvmax number of variables selected
@@ -134,11 +162,15 @@ summary(OrderHour_lm2)
 
 
 ```
+<br>
 
-k-fold cross-validation for MLR model
+#### k-fold cross validation
+
+To test the data, we also perform 5-fold cross-validation for the MLR model.
+<br>
 ```{r}
 # Set up repeated k-fold cross-validation
-train.control <- trainControl(method = "cv", number = 2)
+train.control <- trainControl(method = "cv", number = 5)
 # Train the model
 step.model <- train(order_hour_of_day ~ order_number + order_dow + days_since_prior_order + add_to_cart_order + reordered + aisle_id + department_id, data =OrderHour,
                     method = "leapBackward", 
@@ -149,10 +181,22 @@ step.model$bestTune
 
 plot(step.model)
 ```
+<br>
+
 We create 7 models like this, and step.model$results shows us that the best model to choose is the 7 variable model, since it has the lowest RMSE and highest Rsquared value. But overall these models do not perform well actually since the Rsquareds are very low.
 
+<br><br>
 
-### Logistic Regression
+#### Logistic Regression
+<br>
+
+We now perform logistic regression to predict the variable 'reorder'. Since it is a binary variable with 2 classes,1 and 0, it becomes a classification problem.
+
+As we know from our EDA, Instacart has a lot of loyal customers, who order bi-weekly or monthly. While ordering they also reorder a lot of the same products. So predicting whether a user will reorder or not, may help us later to understand what products to recommend while they are purchasing.
+
+<br>
+
+##### Data Preparation
 
 ```{r}
 user <- OrderProductTrain_lm %>% 
@@ -164,9 +208,12 @@ user
 reorder_log <- user[-c(1)]
 reorder_log
 
+
 ```
+<br><br>
 
-
+##### Model
+We use glm with family="binomial" to create the model. We use all of the variables for this model.
 ```{r}
 #Fitting a binary logistic regression
 log_model <- glm(reordered ~., data = reorder_log, family = "binomial")
@@ -174,46 +221,68 @@ log_model <- glm(reordered ~., data = reorder_log, family = "binomial")
 summary(log_model)
 
 ```
-
+<br>
 Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 64.78% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
 
+<br>
+##### Predicting using the model
+
+We now predict the reorder variable using predict function.
 ```{r}
+
+user2 <- order_products_prior_logreg %>% 
+  group_by(user_id) %>% 
+  mutate(days_since_prior_order = as.numeric(days_since_prior_order)) %>%
+  transmute(total_orders = n_distinct(order_id), avg_days_since_prior_order= mean(days_since_prior_order, na.rm = TRUE), avg_no_items = max(add_to_cart_order), reordered= reordered, order_day = order_dow, product_id=product_id)
+user2
+
+reorder_log2 <- user[-c(1)]
+reorder_log2
 #Prediction
-pred <- predict(log_model, reorder_log, type = "response")
+pred <- predict(log_model, reorder_log2, type = "response")
 #If p > 0.5, then Class is 1 else 0
 y_pred <- ifelse(pred > 0.5, 1, 0)
-y_act <- reorder_log$reordered
+y_act <- reorder_log2$reordered
+
 #Accuracy
 mean(y_pred == y_act) 
 
-```
 
-The Confusion Matrix
-As the result of Confusion Martrix shown below, 222,296 out of 1,111,632 are benign instances predicted as benign, which is around 20% benign. While 1,714,713 out of 1,878,438 are malignant instances predicted as malignant. The result does not perform well. 
+## Another method
+y_pred<-as.factor(y_pred)
+y_act<-as.factor(y_act)
+cm<-confusionMatrix(data=y_pred, 
+  reference=y_act)
+
+Accuracy<-round(cm$overall[1],2)
+Accuracy
+```
+<br>
+
+The predict function gives log-odds predictions for a binomial model. type="response" gives the predicted probabilities.
+The accuracy of this model comes out to be around 61%.
+
+<br><br>
+
+##### The Confusion Matrix
+
+A confusion matrix is a performance measurement for classification problems which compares the predicted and actual values. It helps to see how many true positives and true negatives your model managed to catch, and how many it missed.
 
 ```{r}
-table(factor(y_pred, levels=min(y_act):max(y_act)), factor(y_act, levels=min(y_act):max(y_act))) 
-#pred and test data should be the same levels
+cm 
 ```
-Sensitivity is the percentage of actual 1’s that were correctly predicted. It shows what percentage of 1’s were covered by the model. The sensitivity is 1,714,713/1,878,438 = 91.28%. 
-Likewise, Specificity is the proportion of actual 0’s that were correctly predicted. So in this case, it is 222,296/1,111,632 = 19.99%. 889, 336 out of 1,111,632 predictions are False Positive, which is pretty high in this case. 
+Sensitivity is the percentage of actual 1’s that were correctly predicted. It shows what percentage of 1’s were covered by the model. The sensitivity is 27.07%, which is not very good.
+Likewise, Specificity is the proportion of actual 0’s that were correctly predicted. So in this case, it is 83%, which is pretty good.
+
+<br><br>
 
 
-### Logistic Regression
-
-Then we will be predicting the chances of a user reordering. As we know from our EDA, Instacart has a lot of loyal customers, who order bi-weekly or monthly. While ordering they also reorder a lot of the same products. So predicting whether a user will reorder or not, may help us later to understand what products to recommend while they are purchasing.
-
-```{r}
+#### Lasso Regression for regularization
 
 
-model <- glm(reordered ~.,family=binomial(link='logit'),data=reorder_log)
-model
-log_model
-```
+We use lasso regression to remove extra predictors and push them to 0,to try to improve our model.
 
-
-
-```{r}
+```{r message=FALSE}
 library(glmnet)
 OrderProductTrain_lm
 xfactors <- model.matrix(reordered ~ order_dow + order_hour_of_day + days_since_prior_order + product_id, data=OrderProductTrain_lm)[, -1]
@@ -222,27 +291,29 @@ x        <- as.matrix(data.frame(xfactors))
 # Note alpha=1 for lasso only and can blend with ridge penalty down to
 # alpha=0 ridge only.
 glmmod <- glmnet(x, y=as.factor(OrderProductTrain_lm$reordered), alpha=1, family="binomial")
-
+```
+<br><br>
+##### Lasso plot and ROC
+```{r}
 # Plot variable coefficients vs. shrinkage parameter lambda.
-plot(glmmod, xvar="lambda")
-plot(glmmod,xvar="norm",label=TRUE)
 
-
-
+plot(glmmod, xvar="lambda", label=TRUE)
 
 ROCcurve<-cv.glmnet(x,OrderProductTrain_lm$reordered)
 plot(ROCcurve)
 
-sprintf("Minimum value of lambda that minimizes mean CV error: %# .2f", cvcurve$lambda.min)
-
-
+sprintf("Minimum value of lambda that minimizes mean CV error: %# .7f", cvcurve$lambda.min)
 
 
 ```
 
+<br><br>
 ####  Get estimated beta matrix
 
 Using the min lambda value found, we find the estimated beta matrix. This shows which coefficients have been shrunk to zero and which still exist. This shows which are the important variables that explain the variation in the dependent variable y. 
+
+<br>
+
 ```{r}
 
 newmodel_cv<-glmnet(x,OrderProductTrain_lm$reordered,lambda=ROCcurve$lambda.min, standardize = TRUE)
@@ -257,7 +328,6 @@ lasso_model_train$bestTune
 max(lasso_model_train$results$Accuracy)
 
 
-
 #lambda 1 standard error away
 ROCcurve$lambda.1se
 
@@ -267,13 +337,14 @@ model_1se$beta
 
 <br><br>
 
-More variables are removed upon doing this
+More variables are removed upon using the lambda 1 standard deviation away. The 1 se rule is a standard one when performing lasso regression. The main point of the 1 SE rule is to choose the simplest model whose accuracy is comparable with the best model, according to (Friedman, Hastie, and Tibshirani,2010).
 
-```{r}
+<br><br>
 
-pca_train <-prcomp(reorder_log)
+<center>
+$\LARGE References$  </center>
+<br><br>
 
+Predict method for GLM Fits, n.d. Retrieved from: https://stat.ethz.ch/R-manual/R-patched/library/stats/html/predict.glm.html
 
-
-```
-
+Friedman, Hastie, and Tibshirani,2010. The Elements of Statistical Learning, Springer.
