@@ -176,7 +176,8 @@ log_model <- glm(reordered ~., data = reorder_log, family = "binomial")
 summary(log_model)
 
 ```
-Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 64.78% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
+
+Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 60.59% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
 
 ```{r}
 #Prediction
@@ -190,14 +191,14 @@ mean(y_pred == y_act)
 ```
 
 The Confusion Matrix
-As the result of Confusion Martrix shown below, 222,296 out of 1,111,632 are benign instances predicted as benign, which is around 20% benign. While 1,714,713 out of 1,878,438 are malignant instances predicted as malignant. The result does not perform well. 
+As the result of Confusion Martrix shown below, 15,282 out of 56,462 are benign instances predicted as benign. While 69,070 out of 82,762 are malignant instances predicted as malignant. The result does not perform well. 
 
 ```{r}
 table(factor(y_pred, levels=min(y_act):max(y_act)), factor(y_act, levels=min(y_act):max(y_act))) 
 #pred and test data should be the same levels
 ```
-Sensitivity is the percentage of actual 1’s that were correctly predicted. It shows what percentage of 1’s were covered by the model. The sensitivity is 1,714,713/1,878,438 = 91.28%. 
-Likewise, Specificity is the proportion of actual 0’s that were correctly predicted. So in this case, it is 222,296/1,111,632 = 19.99%. 889, 336 out of 1,111,632 predictions are False Positive, which is pretty high in this case. 
+Sensitivity is the percentage of actual 1’s that were correctly predicted. It shows what percentage of 1’s were covered by the model. The sensitivity is 15,282/56,462 = 27%. 
+Likewise, Specificity is the proportion of actual 0’s that were correctly predicted. So in this case, it is 69,070/82,762 = 83.45%. 
 
 
 ### Logistic Regression
@@ -205,8 +206,6 @@ Likewise, Specificity is the proportion of actual 0’s that were correctly pred
 
 
 ```{r}
-
-
 model <- glm(reordered ~.,family=binomial(link='logit'),data=reorder_log)
 model
 log_model
