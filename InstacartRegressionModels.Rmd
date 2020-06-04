@@ -154,6 +154,8 @@ We create 7 models like this, and step.model$results shows us that the best mode
 
 ### Logistic Regression
 
+Then we will be predicting the chances of a user reordering. As we know from our EDA, Instacart has a lot of loyal customers, who order bi-weekly or monthly. While ordering they also reorder a lot of the same products. So predicting whether a user will reorder or not, may help us later to understand what products to recommend while they are purchasing.
+
 ```{r}
 user <- OrderProductTrain_lm %>% 
   group_by(user_id) %>% 
@@ -165,7 +167,7 @@ reorder_log <- user[-c(1)]
 reorder_log
 
 ```
-
+So we created a new dataframe dropped the user_id and use all the other columns to predict the reorders with logistic regression. Our regression depends variables such as the total number orders a user has, after how many days he is ordering, how many products he is adding to the cart, which day he is ordering and which products usually get reordered. For a example if a user usually shops bi weekly, on sunday and orders milk; he might have very less chances of ordering milk if he is back withing 2 or 3 days of his last purchase.
 
 ```{r}
 #Fitting a binary logistic regression
@@ -174,7 +176,6 @@ log_model <- glm(reordered ~., data = reorder_log, family = "binomial")
 summary(log_model)
 
 ```
-
 Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 64.78% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
 
 ```{r}
@@ -201,7 +202,7 @@ Likewise, Specificity is the proportion of actual 0’s that were correctly pred
 
 ### Logistic Regression
 
-Then we will be predicting the chances of a user reordering. As we know from our EDA, Instacart has a lot of loyal customers, who order bi-weekly or monthly. While ordering they also reorder a lot of the same products. So predicting whether a user will reorder or not, may help us later to understand what products to recommend while they are purchasing.
+
 
 ```{r}
 
