@@ -85,7 +85,7 @@ sample_users <- sample(users, round(user_fraction * length(users)))
 cat('Number of orders (before): ', nrow(orders))
 orders <- orders[user_id %in% sample_users]
 cat('Number of orders (after): ', nrow(orders))
-unique(orders$user_id)
+
 
 order_products_prior<-order_products_prior%>%semi_join(orders)
 order_products_train<-order_products_train%>%semi_join(orders)
@@ -130,7 +130,7 @@ An important part of the business is predicting how many of what products will b
 OrderProductTrain_lm<-orders%>%inner_join(order_products_train)%>%inner_join(products)
 OrderProductTrain_lm<-drop_na(OrderProductTrain_lm)
 OrderProductTrain_lm<-OrderProductTrain_lm[-c(3)]
-OrderProductTrain_lm
+
 OrderHour <- OrderProductTrain_lm[-c(1,2,7,10)]
 
 order_products_prior_logreg<-orders%>%inner_join(order_products_prior)%>%inner_join(products)
@@ -150,7 +150,9 @@ summary(OrderHour_lm)
 As we can see from R-squared above 0.0006175 is very low. Then we try to do backward elimination and k-cross validation to improve our model in the next steps.
 
 <br>
+
 #### Backward elimination to address multicollinearity
+
 We perform backward elimination using stepAIC and regsubsets() which shows us that for a model with maximum allowed variables 7, which variables should be selected when nvar=1:7. ie, if the model has to have 1 feature, which feature should be selected, if the model has to have 2 features, what makes the best 2 feature model, and so on.
 <br>
 
@@ -230,6 +232,9 @@ summary(log_model)
 
 Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 64.78% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
 
+Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 60.59% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
+
+
 <br>
 ##### Predicting using the model
 
@@ -253,7 +258,6 @@ y_act <- reorder_log2$reordered
 #Accuracy
 mean(y_pred == y_act) 
 
-
 ## Another method
 y_pred<-as.factor(y_pred)
 y_act<-as.factor(y_act)
@@ -263,7 +267,6 @@ cm<-confusionMatrix(data=y_pred,
 Accuracy<-round(cm$overall[1],2)
 Accuracy
 ```
-<br>
 
 The predict function gives log-odds predictions for a binomial model. type="response" gives the predicted probabilities.
 The accuracy of this model comes out to be around 61%.
@@ -273,17 +276,20 @@ The accuracy of this model comes out to be around 61%.
 
 ##### The Confusion Matrix
 
+As the result of Confusion Martrix shown below, 15,282 out of 56,462 are benign instances predicted as benign. While 69,070 out of 82,762 are malignant instances predicted as malignant. The result does not perform well. 
+<br>
+
 A confusion matrix is a performance measurement for classification problems which compares the predicted and actual values. It helps to see how many true positives and true negatives your model managed to catch, and how many it missed.
 
 
 ```{r}
 cm 
 ```
+
 Sensitivity is the percentage of actual 1’s that were correctly predicted. It shows what percentage of 1’s were covered by the model. The sensitivity is 27.07%, which is not very good.
 Likewise, Specificity is the proportion of actual 0’s that were correctly predicted. So in this case, it is 83%, which is pretty good.
 
 <br><br>
-
 
 #### Lasso Regression for regularization
 
@@ -292,7 +298,7 @@ We use lasso regression to remove extra predictors and push them to 0,to try to 
 
 ```{r message=FALSE}
 library(glmnet)
-OrderProductTrain_lm
+
 xfactors <- model.matrix(reordered ~ order_dow + order_hour_of_day + days_since_prior_order + product_id, data=OrderProductTrain_lm)[, -1]
 x        <- as.matrix(data.frame(xfactors))
 
