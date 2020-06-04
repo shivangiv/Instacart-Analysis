@@ -198,6 +198,8 @@ As we know from our EDA, Instacart has a lot of loyal customers, who order bi-we
 
 ##### Data Preparation
 
+Then we will be predicting the chances of a user reordering. As we know from our EDA, Instacart has a lot of loyal customers, who order bi-weekly or monthly. While ordering they also reorder a lot of the same products. So predicting whether a user will reorder or not, may help us later to understand what products to recommend while they are purchasing.
+
 ```{r}
 user <- OrderProductTrain_lm %>% 
   group_by(user_id) %>% 
@@ -208,9 +210,11 @@ user
 reorder_log <- user[-c(1)]
 reorder_log
 
-
 ```
 <br><br>
+
+So we created a new dataframe dropped the user_id and use all the other columns to predict the reorders with logistic regression. Our regression depends variables such as the total number orders a user has, after how many days he is ordering, how many products he is adding to the cart, which day he is ordering and which products usually get reordered. For a example if a user usually shops bi weekly, on sunday and orders milk; he might have very less chances of ordering milk if he is back withing 2 or 3 days of his last purchase.
+
 
 ##### Model
 We use glm with family="binomial" to create the model. We use all of the variables for this model.
@@ -221,7 +225,9 @@ log_model <- glm(reordered ~., data = reorder_log, family = "binomial")
 summary(log_model)
 
 ```
+
 <br>
+
 Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 64.78% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
 
 <br>
@@ -264,9 +270,11 @@ The accuracy of this model comes out to be around 61%.
 
 <br><br>
 
+
 ##### The Confusion Matrix
 
 A confusion matrix is a performance measurement for classification problems which compares the predicted and actual values. It helps to see how many true positives and true negatives your model managed to catch, and how many it missed.
+
 
 ```{r}
 cm 
@@ -293,21 +301,30 @@ x        <- as.matrix(data.frame(xfactors))
 glmmod <- glmnet(x, y=as.factor(OrderProductTrain_lm$reordered), alpha=1, family="binomial")
 ```
 <br><br>
+
 ##### Lasso plot and ROC
+
+
+Each colored line in the lasso plot represents the value taken by a different coefficient in the model. Lambda is the weight given to the regularization term (the L1 norm), so as lambda approaches zero, the loss function of your model approaches the OLS loss function (David Marx,2013).
+
+The second plot is the ROC. It shows the lambda values and their MSE. $\lambda$min and $\lambda$1se are both shown by the vertical line.
+<br>
+
 ```{r}
 # Plot variable coefficients vs. shrinkage parameter lambda.
 
-plot(glmmod, xvar="lambda", label=TRUE)
+plot(glmmod, xvar="norm", label=TRUE)
 
 ROCcurve<-cv.glmnet(x,OrderProductTrain_lm$reordered)
 plot(ROCcurve)
 
-sprintf("Minimum value of lambda that minimizes mean CV error: %# .7f", cvcurve$lambda.min)
+sprintf("Minimum value of lambda that minimizes mean CV error: %# .7f", ROCcurve$lambda.min)
 
 
 ```
 
 <br><br>
+
 ####  Get estimated beta matrix
 
 Using the min lambda value found, we find the estimated beta matrix. This shows which coefficients have been shrunk to zero and which still exist. This shows which are the important variables that explain the variation in the dependent variable y. 
@@ -348,3 +365,5 @@ $\LARGE References$  </center>
 Predict method for GLM Fits, n.d. Retrieved from: https://stat.ethz.ch/R-manual/R-patched/library/stats/html/predict.glm.html
 
 Friedman, Hastie, and Tibshirani,2010. The Elements of Statistical Learning, Springer.
+
+David Marx,2013. Interpretting LASSO variable trace plots. Retrieved from: https://stats.stackexchange.com/q/68435
