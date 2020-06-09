@@ -1,0 +1,147 @@
+---
+title: "InstacartTreebasedModels"
+author: "Yihong Qiu"
+date: "6/8/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+<center>
+
+
+### ALY 6040 Data Mining Applications
+### Assignment 3: Instacart Tree Based Models and Model Optimization
+### Shivangi Vashi
+### Yihong Qiu
+### Md Tajrianul Islam
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+  
+### Instructor: Kasun Samarasinghe
+### Spring 2020
+### June 8 2020
+### Northeastern University
+</center>
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+
+<style>
+body {
+text-align: justify}
+</style>
+
+<center>
+$\LARGE Introduction$  </center>
+<br><br>
+This week we are going to 
+
+
+<br>
+
+Reading the dataset,importing relevant libraries.
+```{r message=FALSE, warning=FALSE}
+
+library(plyr)
+library(tidyverse)
+library(data.table)
+library(rpart)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+
+
+#using fread because it reads data very fast
+aisles<-fread("instacart-market-basket-analysis/aisles.csv")
+departments<-fread("instacart-market-basket-analysis/departments.csv")
+order_products_prior<-fread("instacart-market-basket-analysis/order_products__prior.csv")
+order_products_train<-fread("instacart-market-basket-analysis/order_products__train.csv")
+orders<-fread("instacart-market-basket-analysis/orders.csv")
+products<-fread("instacart-market-basket-analysis/products.csv")
+
+```
+
+<center>
+$\large Data~Wrangling$ </center>
+
+<br><br>
+
+#### Data Preparation
+Since the dataset is very large, with Prior orders having 32 million rows, we subset the data to reduce calculation time. We did this by randomly sampling users, then only keeping their orders and prior order information by performing inner joins with the order prior and train datasets.
+
+```{r message=FALSE}
+set.seed(123)
+user_fraction <- 0.1
+users <- unique(orders$user_id)
+sample_users <- sample(users, round(user_fraction * length(users)))
+
+cat('Number of orders (before): ', nrow(orders))
+orders <- orders[user_id %in% sample_users]
+cat('Number of orders (after): ', nrow(orders))
+
+# Training dataset
+OrderProductPrior<-orders%>%inner_join(order_products_prior)
+OrderProductPrior<-drop_na(OrderProductPrior)
+OrderProductPrior<-OrderProductPrior[-c(1,2,3,9)]
+
+#Testing dataset
+OrderProductTrain<-orders%>%inner_join(order_products_train)
+OrderProductTrain<-drop_na(OrderProductTrain)
+OrderProductTrain<-OrderProductTrain[-c(1,2,3,9)]
+
+dim(OrderProductPrior)
+dim(OrderProductTrain)
+head(OrderProductPrior)
+head(OrderProductTrain)
+
+```
+
+<center>
+$\LARGE Analysis$  </center>
+<br><br>
+
+#### Building Decision Tree Model
+```{r}
+#Create the decision tree model
+OrderProductTree<- rpart(reordered~., data = OrderProductPrior, method = 'class')
+
+# Plot the model
+fancyRpartPlot(OrderProductTree, cex = 0.5)
+
+```
+<br><br>
+
+
+#### Prediction
+<br>
+
+```{r}
+pred <-predict(OrderProductTree, OrderProductPrior, type = 'class')
+
+Table<-table(OrderProductPrior$reordered, pred)
+Table
+
+Accuracy<-sum(diag(Table)) / sum(Table)
+
+print(paste('Accuracy for test', Accuracy))
+```
+<br>
+
+
+#### Random Forest
+<br>
+
+```{r}
+RF <- randomForest(reordered ~., data=OrderProductPrior, ntree=1000,
+                          keep.forest=FALSE, importance=TRUE)
+print(RF)
+importance(RF)
+plot(randomForest(reordered ~ ., OrderProductPrior, keep.forest=FALSE, ntree=100), log="y")
+
+```
+<br>
