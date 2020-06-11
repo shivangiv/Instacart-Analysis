@@ -20,7 +20,7 @@ output:
   
 ### Instructor: Kasun Samarasinghe
 ### Spring 2020
-### June 8 2020
+### June 10 2020
 ### Northeastern University
 </center>
 
@@ -39,7 +39,13 @@ text-align: justify}
 <center>
 $\LARGE Introduction$  </center>
 <br><br>
+<<<<<<< HEAD
 This week we use Instacart Maket Basket dataset to conduct analysis and to predict outcomes by using the tree based models. There are two types of tree-based models: regression and classification. A regression tree is used for a continuous dependent variable, while a classification tree is used for a categorical dependent variable. In this report,we will use Decision Tree, Random Forest and K-means Clustering to test the models in our analysis. 
+=======
+This week we are going to look at tree based models. We are going to use Decision tree and Random Forest to predict the 'reordered' variable.
+Then we will use k means clustering to cluster the orders table to see if we can find some structure in the data.
+
+>>>>>>> 5074ba09273a6edbbd8c6fd02db281350febbb60
 
 <br>
 
@@ -183,6 +189,21 @@ It is less interpretable than an individual decision tree. It can become slow on
 Although it is more accurate, but it cannot compete with advanced boosting algorithms. Training a large number of deep trees can have high computational costs and use a lot of memory. 
 <br>
 
+<<<<<<< HEAD
+=======
+
+##### Clustering
+
+We use the elbow plot to find out how many clusters or k's to set for the model. Right where the curve bends, ie at the elbow is where the optimum number of clusters is. For our data it is at n=10.
+
+The model does not perform well, and we can conclude that k means clustering does not make sense for this data- there is not much structure to it.
+```{r}
+# library(NbClust)
+library(dplyr)
+library(ggfortify)
+library(factoextra)
+### Clustering
+>>>>>>> 5074ba09273a6edbbd8c6fd02db281350febbb60
 
 #### Clustering
 
@@ -211,7 +232,7 @@ fitK <- kmeans(ProductScaled, 10)
 str(fitK)
 
 
-fviz_cluster(fitK, geom = "point", data = ProductScaled) + ggtitle("k = 7")
+fviz_cluster(fitK, geom = "point", data = ProductScaled) + ggtitle("k = 10")
 
 ```
 <br><br>
