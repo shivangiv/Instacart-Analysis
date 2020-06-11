@@ -20,7 +20,7 @@ output:
   
 ### Instructor: Kasun Samarasinghe
 ### Spring 2020
-### June 8 2020
+### June 10 2020
 ### Northeastern University
 </center>
 
@@ -39,7 +39,8 @@ text-align: justify}
 <center>
 $\LARGE Introduction$  </center>
 <br><br>
-This week we are going to 
+This week we are going to look at tree based models. We are going to use Decision tree and Random Forest to predict the 'reordered' variable.
+Then we will use k means clustering to cluster the orders table to see if we can find some structure in the data.
 
 
 <br>
@@ -148,8 +149,14 @@ plot(RF, log="y")
 ```
 <br>
 
+
+##### Clustering
+
+We use the elbow plot to find out how many clusters or k's to set for the model. Right where the curve bends, ie at the elbow is where the optimum number of clusters is. For our data it is at n=10.
+
+The model does not perform well, and we can conclude that k means clustering does not make sense for this data- there is not much structure to it.
 ```{r}
-library(NbClust)
+# library(NbClust)
 library(dplyr)
 library(ggfortify)
 library(factoextra)
@@ -181,6 +188,6 @@ fitK
 str(fitK)
 
 
-fviz_cluster(fitK, geom = "point", data = ProductScaled) + ggtitle("k = 7")
+fviz_cluster(fitK, geom = "point", data = ProductScaled) + ggtitle("k = 10")
 
 ```
