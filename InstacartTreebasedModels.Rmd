@@ -57,12 +57,12 @@ library(randomForest)
 
 
 #using fread because it reads data very fast
-aisles<-fread("instacart-market-basket-analysis/aisles.csv")
-departments<-fread("instacart-market-basket-analysis/departments.csv")
+#aisles<-fread("instacart-market-basket-analysis/aisles.csv")
+#departments<-fread("instacart-market-basket-analysis/departments.csv")
 order_products_prior<-fread("instacart-market-basket-analysis/order_products__prior.csv")
 order_products_train<-fread("instacart-market-basket-analysis/order_products__train.csv")
 orders<-fread("instacart-market-basket-analysis/orders.csv")
-products<-fread("instacart-market-basket-analysis/products.csv")
+#products<-fread("instacart-market-basket-analysis/products.csv")
 
 ```
 
@@ -137,11 +137,50 @@ print(paste('Accuracy for test', Accuracy))
 <br>
 
 ```{r}
-RF <- randomForest(reordered ~., data=OrderProductPrior, ntree=1000,
+OrderProductTrain$reordered<-as.factor(OrderProductTrain$reordered)
+
+RF <- randomForest(reordered ~., data=OrderProductTrain, ntree=500,
                           keep.forest=FALSE, importance=TRUE)
 print(RF)
 importance(RF)
-plot(randomForest(reordered ~ ., OrderProductPrior, keep.forest=FALSE, ntree=100), log="y")
-
+plot(RF, log="y")
+#randomForest(reordered ~ ., OrderProductTrain, keep.forest=FALSE, ntree=100)
 ```
 <br>
+
+```{r}
+library(NbClust)
+library(dplyr)
+library(ggfortify)
+library(factoextra)
+### Clustering
+
+Product_cluster <- OrderProductTrain %>% 
+  mutate(days_since_prior_order = as.numeric(days_since_prior_order)) %>%
+  transmute(product_id=product_id,order_hour=order_hour_of_day,days_since_prior_order, reordered= as.numeric(reordered), order_day = order_dow)
+
+
+#Scaling Data
+ProductScaled <- scale(Product_cluster[, -1])
+ProductScaled
+
+
+# Set max number of clusters as 15
+k.max <- 15
+# Compute and plot wss for k = 2 to k = 15.
+wss <- sapply(1:k.max, 
+              function(k){
+                kmeans(ProductScaled, k, nstart=50,iter.max = 15 )$tot.withinss})
+wss
+plot(1:k.max, wss, type="b", pch = 19, frame = FALSE, xlab="Number of clusters K",ylab="Total within-clusters sum of squares")
+
+#From the plot you can see that the elbow is at n=4 hence number of clusters= 5
+
+fitK <- kmeans(ProductScaled, 10)
+fitK
+str(fitK)
+
+
+fviz_cluster(fitK, geom = "point", data = ProductScaled) + ggtitle("k = 7")
+
+```
