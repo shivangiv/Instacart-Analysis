@@ -3,8 +3,8 @@ title: "InstacartTreebasedModels"
 author: "Yihong Qiu"
 date: "6/8/2020"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 <center>
 
@@ -39,12 +39,11 @@ text-align: justify}
 <center>
 $\LARGE Introduction$  </center>
 <br><br>
-This week we are going to 
-
+This week we use Instacart Maket Basket dataset to conduct analysis and to predict outcomes by using the tree based models. There are two types of tree-based models: regression and classification. A regression tree is used for a continuous dependent variable, while a classification tree is used for a categorical dependent variable. In this report,we will use Decision Tree, Random Forest and K-means Clustering to test the models in our analysis. 
 
 <br>
 
-Reading the dataset,importing relevant libraries.
+First, reading the dataset and importing relevant libraries.
 ```{r message=FALSE, warning=FALSE}
 
 library(plyr)
@@ -54,6 +53,10 @@ library(rpart)
 library(RColorBrewer)
 library(rattle)
 library(randomForest)
+library(NbClust)
+library(dplyr)
+library(ggfortify)
+library(factoextra)
 
 
 #using fread because it reads data very fast
@@ -106,6 +109,11 @@ $\LARGE Analysis$  </center>
 <br><br>
 
 #### Building Decision Tree Model
+
+<br>
+We build the decision tree to seek when the reordered is 1, how order_number will be distributed, when order_number is less than 7.5, it will go to more specific like whether it is less than 3.5 as shown in the decision tree plot. The result shows that 66% data are order more than 7.5, 20% order data are between 3.5 to 7.5
+<br>
+
 ```{r}
 #Create the decision tree model
 OrderProductTree<- rpart(reordered~., data = OrderProductPrior, method = 'class')
@@ -119,6 +127,8 @@ fancyRpartPlot(OrderProductTree, cex = 0.5)
 
 #### Prediction
 <br>
+Then we do the prediction of the decision tree model. The dataset correctly predict 272,953 won't reorder and 1,802,414 out of 2,653,957 are reordered. The accurary of the test is 68.79%, which is pretty good. 
+<br>
 
 ```{r}
 pred <-predict(OrderProductTree, OrderProductPrior, type = 'class')
@@ -130,10 +140,24 @@ Accuracy<-sum(diag(Table)) / sum(Table)
 
 print(paste('Accuracy for test', Accuracy))
 ```
+<br><br>
+
+#### Advantages and Disadvantages of Decision Tree
+<br>
+Advantage of Decision Tree:
+Decision tree split from the top down, grouping data into the most homogeneous “sub-nodes” based on their characteristics, so it perform well with categorical variables. It can process missing values quite well. Besides, it is easy to understand, interpret and visualize.
+<br>
+<br>
+Disadvantage of Decision Tree:
+It might be intorelant for a small change in data cause the model to shift and the outliers have a big impact. Also, it would go too deep and get overfitting for the result. 
 <br>
 
 
+
 #### Random Forest
+
+<br>
+In the Random Forest outcome, we get a 33.75% estimate of error rate, which is okay. Based on the confusion matrix, the dataset predicts 29,506 won't reorder, and 61,449 will reorder. As we know, the higher Mean Decrease Accuracy and Mean Decrease Gini we get, the higher accuracy of the variables we choose. From the results, variables order_number, order_dow, order_hour_of_day, days_since_prior_order and product_id perform well in this model. 
 <br>
 
 ```{r}
@@ -146,15 +170,23 @@ importance(RF)
 plot(RF, log="y")
 #randomForest(reordered ~ ., OrderProductTrain, keep.forest=FALSE, ntree=100)
 ```
+<br><br>
+
+#### Advantages and Disadvantages of Random Forest
+<br>
+Advantages of Random Forest:
+It usually have very good performance and easy to understand. Also it provides a reliable feature importance estimate because it applied a large number of individual decision trees. Random forest can solve both type of problems that is classification and regression and does a decent estimation at both fronts. There is no pre-processing required. It is robust to outliers.
+<br>
+<br>
+Disadvantages of Random Forest:
+It is less interpretable than an individual decision tree. It can become slow on large datasets.
+Although it is more accurate, but it cannot compete with advanced boosting algorithms. Training a large number of deep trees can have high computational costs and use a lot of memory. 
 <br>
 
-```{r}
-library(NbClust)
-library(dplyr)
-library(ggfortify)
-library(factoextra)
-### Clustering
 
+#### Clustering
+
+```{r}
 Product_cluster <- OrderProductTrain %>% 
   mutate(days_since_prior_order = as.numeric(days_since_prior_order)) %>%
   transmute(product_id=product_id,order_hour=order_hour_of_day,days_since_prior_order, reordered= as.numeric(reordered), order_day = order_dow)
@@ -162,8 +194,7 @@ Product_cluster <- OrderProductTrain %>%
 
 #Scaling Data
 ProductScaled <- scale(Product_cluster[, -1])
-ProductScaled
-
+head(ProductScaled)
 
 # Set max number of clusters as 15
 k.max <- 15
@@ -177,10 +208,20 @@ plot(1:k.max, wss, type="b", pch = 19, frame = FALSE, xlab="Number of clusters K
 #From the plot you can see that the elbow is at n=4 hence number of clusters= 5
 
 fitK <- kmeans(ProductScaled, 10)
-fitK
 str(fitK)
 
 
 fviz_cluster(fitK, geom = "point", data = ProductScaled) + ggtitle("k = 7")
 
 ```
+<br><br>
+
+<br>
+So we are trying to clusters the products that are often bought together. So if we are trying to build a recommendation system to suggest similar products with the least euclidean distance from the 1st add to cart product.  
+We use the elbow plot to find out how many clusters or k's to set for the model. Right where the curve bends, ie at the elbow is where the optimum number of clusters is. For our data it is at n=10.
+Which is pretty much understandable, considering we are talking about a grocery store it is possible to have 10 clusters of product groups that are mostly purchased together considering which day, which time and whether it was ordered before or not. 
+The model does not perform well, and we can conclude that k means clustering does not make sense for this data- there is not much structure to it.
+<br>
+
+
+
