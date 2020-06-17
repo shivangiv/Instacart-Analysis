@@ -1,0 +1,254 @@
+---
+title: "Trump Tweets Analysis"
+author: "Yihong Qiu"
+date: "6/17/2020"
+output:
+    pdf_document: default
+    html_document: default
+---
+
+<center>
+
+
+### ALY 6040 Data Mining Applications
+### Assignment 4:  Trump Tweets Analysis
+### Shivangi Vashi
+### Yihong Qiu
+### Md Tajrianul Islam
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+  
+### Instructor: Kasun Samarasinghe
+### Spring 2020
+### June 17 2020
+### Northeastern University
+</center>
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+
+<style>
+body {
+text-align: justify}
+</style>
+
+<center>
+$\LARGE Introduction$  </center>
+<br><br>
+This week we are going to analyze the unstructured data of Trump Tweets. From these speech documents, we will look for the most frequency words that will appear. In this report, we first process the data by removing punctutation, numbers, capitalization, common words and white spaces. Then we use a document-term matrix and a term-document matrix to describe the frequency of terms and then calculate terms correlations. A words cloud will be created as well. Hierarchal Clustering and K-means Clustering methods will also be conducted in the end. The ultimately aim is to find out the most frequency words that appeared in these documents.
+<br>
+
+Importing libraries and reading file
+```{r message=FALSE, warning=FALSE}
+
+library(tm)
+library(SnowballC)
+library(RColorBrewer)
+library(ggplot2)
+library(wordcloud)
+library(biclust)
+library(cluster)
+library(igraph)
+library(fpc)
+library(Rcampdf)
+
+cname <- file.path("~/Documents/GitHub/Trump Tweets Analysis", "texts")   
+cname   
+dir(cname)
+
+#Create Corpus
+docs <- VCorpus(DirSource(cname))   
+summary(docs)   
+
+#Load details of any documents in the corpus
+inspect(docs[1]) #load the first document in corpus
+
+```
+
+<center>
+$\LARGE Analysis$  </center>
+<br><br>
+
+#### Preprocessing 
+<br>
+First, we remove punctutation, numbers, capitalization, common words, such as english, syllogism and tautology. Then we combine words together and do the replacement. After that, we complete stemmed words and strip the white space in the text for the preparation of our next analysis. We will plot the word frequency and 
+<br>
+
+```{r}
+docs <- tm_map(docs,removePunctuation) #Remove punctutation
+for (j in seq(docs)) {
+  docs[[j]] <- gsub("/", " ", docs[[j]])
+  docs[[j]] <- gsub("@", " ", docs[[j]])
+  docs[[j]] <- gsub("\\|", " ", docs[[j]])
+  docs[[j]] <- gsub("\u2028", " ", docs[[j]])
+}
+
+docs <- tm_map(docs, removeNumbers) #Remove numbers
+docs <- tm_map(docs, tolower)   #Translate characters to lower case
+docs <- tm_map(docs, PlainTextDocument) #Create plain text docs
+DocsCopy <- docs
+
+docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, PlainTextDocument)
+
+#Removing particular words
+docs <- tm_map(docs, removeWords, c("syllogism", "tautology"))   
+
+#Combining words that should stay together.
+#For example, combine "inner", "city" as "inner-city" so you can analyze them together
+for (j in seq(docs))
+{
+  docs[[j]] <- gsub("fake news", "fake_news", docs[[j]]) #Pattern Matching and Replacement
+  docs[[j]] <- gsub("inner city", "inner-city", docs[[j]])
+  docs[[j]] <- gsub("politically correct", "politically_correct", docs[[j]])
+}
+docs <- tm_map(docs, PlainTextDocument)
+
+docs_st <- tm_map(docs, stemDocument)   
+docs_st <- tm_map(docs_st, PlainTextDocument)
+writeLines(as.character(docs_st[1]))
+
+docs_stc <- tm_map(docs_st, stemCompletion, dictionary = DocsCopy, lazy=TRUE)
+writeLines(as.character(docs_stc[1]))
+
+docs <- tm_map(docs, stripWhitespace) 
+docs <- tm_map(docs, PlainTextDocument)
+```
+<br><br>
+
+#### Stage the data 
+<br>
+In this part, we use a document-term matrix and transpose the matrix to a term-document matrix to describe the frequency of terms that occur in a collection of documents. The sparsity is 79%, so we remove sparse terms and make a matrix that is 20% empty space. As shown from the results below, words that have the top 3 frequencies are "will", "people" and "going".
+<br>
+
+```{r}
+# In a document-term matrix, rows correspond to documents in the collection and columns correspond to terms. 
+dtm <- DocumentTermMatrix(docs)   
+dtm 
+
+#Transpose the matrix
+tdm <- TermDocumentMatrix(docs)   
+tdm  
+
+#Organize terms by Frequency
+freq <- colSums(as.matrix(dtm))   
+length(freq)
+orderfreq <- order(freq) 
+Matrix <- as.matrix(dtm)   
+dim(Matrix) 
+
+#Explore as csv
+write.csv(Matrix, file="DocumentTermMatrix.csv")   
+
+#  Start by removing sparse terms:
+dtms <- removeSparseTerms(dtm, 0.2) # This makes a matrix that is 20% empty space, maximum.   
+dtms
+
+# most and least frequently occurring words.
+freq <- colSums(as.matrix(dtm)) 
+#Check out the frequency of frequencies
+head(table(freq), 20) 
+#The resulting output is two rows of numbers. The top number is the frequency with which words appear and the bottom number reflects how many words appear that frequently. Here, considering only the 20 lowest word frequencies, we can see that 1602 terms appear only once. There are also a lot of others that appear very infrequently.
+
+tail(table(freq), 20) # The ", 20" indicates that we only want the last 20 frequencies
+
+#For a less, fine-grained look at term freqency we can view a table of the terms we selected when we removed sparse terms
+freq <- colSums(as.matrix(dtms))   
+freq 
+
+#sort the most frequent words as decreasing order
+freq <- sort(colSums(as.matrix(dtm)), decreasing=TRUE)   
+head(freq, 14) #select top 14
+
+#create a data frame for next steps
+wordfreq <- data.frame(word=names(freq), freq=freq)   
+head(wordfreq)
+
+```
+<br><br>
+
+#### Plot Word Frequency
+<br>
+The frequency of those words that appear at least 50 times are being plot as shown below. It is clear that "will" has appeared the most more than 400 times, then "people" and "going" have appeared around 380 times.
+<br>
+
+```{r}
+#Plot a histogram for words that appear at least 50 times
+histwords <- ggplot(subset(wordfreq, freq>50), aes(x = reorder(word, -freq), y = freq)) +
+  geom_bar(stat = "identity", color = rainbow(49)) +
+  theme(axis.text.x=element_text(angle=45, hjust=1, color = rainbow(49))) 
+histwords                                     
+```
+<br><br>
+
+
+#### Calculate terms correlations
+<br>
+We identify the words that most highly correlate with that term. If words always appear together, then correlation=1.0. We find the highly correlation terms with "immigration" by specifying a correlation limit of 0.98, and also find the highly correlation terms with "work" and "jobs" by specifying a correlation limit of 0.90. From the results shown below, most related to "immigration" word are those words related to "criminal", "policies", "illegal" etc. When it comes to "work" and "jobs", those are related to "protect" and "countries".
+<br>
+
+```{r}
+findAssocs(dtm, "immigration", corlimit=0.98) # specifying a correlation limit of 0.99
+findAssocs(dtm, c("work", "jobs"), corlimit=0.90) 
+```
+<br><br>
+
+#### Create word clouds
+<br>
+We remove sparse terms and to have a 15% empty space then find word frequencies. The word clouds are generated as shown below. "will", "people", "going" still have the top 3 frequency terms.
+<br>
+
+```{r}
+dtms <- removeSparseTerms(dtm, 0.15) # Prepare the data (max 15% empty space)   
+freq <- colSums(as.matrix(dtm)) # Find word frequencies   
+dark2 <- brewer.pal(6, "Dark2")   
+wordcloud(names(freq), freq, max.words=100, rot.per=0.2, colors=dark2)    
+```
+<br><br>
+
+
+#### Hierarchal Clustering
+<br>
+Next, we calculate distance between words and conduct hierarchal Clustering by using 6 clusters as shown below of the dendogram with orange borders. 
+<br>
+
+```{r}
+dtms <- removeSparseTerms(dtm, 0.15) # This makes a matrix that is only 15% empty space.
+distmatrix<- dist(t(dtms), method="euclidian")   # First calculate distance between words
+fit <- hclust(distmatrix, method="complete")    # Also try: method="ward.D"   
+
+plot(fit, labels = NULL, hang = -1, cex =1,
+     main = "Cluster dendrogram") # display dendogram
+
+groups <- cutree(fit, k=6)   # "k=" defines the number of clusters you are using   
+rect.hclust(fit, k=6, border="orange") # draw dendogram with borders around the 6 clusters   
+
+```
+<br><br>
+
+#### K-means clustering
+<br>
+As we can see from the cluster plot, there are two clusters, the blue one shows that "will", "people" and "going" are the most frequency words. 
+<br>
+```{r}
+dtms <- removeSparseTerms(dtm, 0.15) # Prepare the data (max 15% empty space)   
+distmatrix<- dist(t(dtms), method="euclidian")   
+kfit <- kmeans(distmatrix, 2)   
+clusplot(as.matrix(distmatrix), kfit$cluster, color=T, shade=T, labels=2, lines=0)  
+```
+<br><br>
+
+<center>
+$\LARGE Conclusion$  </center>
+<br><br>
+By generate the words frequency dataframe and plot the words frequency, words cloud, and clustering, we can see the most frequency words are "will", "people" and "going". From the terms correlations, we find out the words that highly correlated to "immigration" are "criminal", "policies" and "death". When it comes to "work" and "jobs", those are related to "protect" and "countries".
+<br>
+
+
+
+
