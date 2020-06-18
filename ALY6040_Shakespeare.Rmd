@@ -56,7 +56,7 @@ Bag of words: treats words as singular tokens and analyzes them separately.
 ##### Loading data
 
 We divide the text file into 3 to better view the corpus and word count matrix. A corpus is a collection of documents- it is a datatype you can create using the 'tm' package.
-```{r}
+```{r warning=FALSE, message=FALSE}
 #In order to have a better view of Corpus and word count matrix, 
 #we divide the original text file into three and you can download 
 #them from 1.txt, 2.txt and 3.txt.
@@ -96,21 +96,6 @@ R needs to interpret each element in our text file as a document. The Source fun
 shakespeare <- VCorpus(DirSource("data", encoding = "UTF-8"))
 shakespeare
 
-#As we can see our Shakespeare corpus contains three documents. 
-#Just a side remark, if one wants to create an easy 
-#Corpus object, it is easy to do via VectorSrouce.
-
-twoPhrases <- c("Phrase one ", "Phrase two")
-simpleCorpus <- VCorpus(VectorSource(twoPhrases))
-simpleCorpus
-
-#If you want to export the your Corpus 
-#for to used by other tools. Simply use:
-writeCorpus(shakespeare)
-#which will output the documents to 
-#multiple files in the Corpus to the hard disk.
-
-
 #Corpus mainipulation
 #There are many methods we can use to play with Corpus. 
 #Each Corpus has its own meta data and each document in the 
@@ -130,6 +115,12 @@ summary(shakespeare)
 
 
 #### Data Cleaning
+
+It is important to clean up the data before proceeding to analyse it, because there may be words and aspects of the data we do not care about. So we first remove the white space from the data. We then perform stemming to reduce all common words to its root word. We must therefore use stemDocument(). tm_map is a fast and effective way to apply the operation to all of the documents. Without it we would have to split and unlist the documents so that the whole document is not treated as one character vector.
+
+The argument lazy=TRUE is there so that the mapping is delayed until all of the content is accessed.
+We also remove punctiation and remove stopwords such as a an the, etc. First we take a look at all the stopwords ie highly frequent words in english that don't provide any information about the text using stopwords("en").
+
 ```{r}
 library(wordcloud)
 #Cleaning data
@@ -142,11 +133,15 @@ shakespeare <- tm_map(shakespeare, stripWhitespace, lazy=TRUE)
 shakespeare <- tm_map(shakespeare, stemDocument, lazy=TRUE)
 # Remove punctuation
 shakespeare <- tm_map(shakespeare, removePunctuation, lazy=TRUE)
+
+# List standard English stop words
+stopwords("en")
+shakespearestops<-c("a","an","the")
 # Remove stopwords
-tm_map(shakespeare, content_transformer(removeWords), stopwords("the"), lazy=TRUE)
+shakespeare<-tm_map(shakespeare, content_transformer(removeWords), stopwords(shakespearestops), lazy=TRUE)
 
 # Case conversion
-tm_map(shakespeare, content_transformer(tolower), lazy = TRUE)
+shakespeare<-tm_map(shakespeare, content_transformer(tolower), lazy = TRUE)
 
 
 
