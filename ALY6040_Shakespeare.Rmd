@@ -184,13 +184,6 @@ barplot(freq[1:50], xlab = "term", ylab = "frequency",  col=heat.colors(50))
 
 
 
-
-
-
-
-
-
-
 ```
 
 References:
