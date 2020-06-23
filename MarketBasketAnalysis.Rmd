@@ -1,0 +1,132 @@
+---
+title: "FinalProject"
+author: "Shivangi Vashi"
+date: "6/22/2020"
+output: html_document
+---
+<center>
+
+
+### ALY 6040 Data Mining Applications
+### Market Basket Analysis
+### Shivangi Vashi
+### Yihong Qiu
+### Md Tajrianul Islam
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+  
+### Instructor: Kasun Samarasinghe
+### Spring 2020
+### June 23 2020
+### Northeastern University
+</center>
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+
+<style>
+body {
+text-align: justify}
+</style>
+
+<center>
+$\LARGE Introduction$  </center>
+<br><br>
+
+
+
+```{r message=FALSE, warning=FALSE}
+
+library(plyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(ggcorrplot)
+library(leaps)
+library(caret)
+
+#using fread because it reads data very fast
+aisles<-fread("instacart-market-basket-analysis/aisles.csv")
+departments<-fread("instacart-market-basket-analysis/departments.csv")
+order_products_prior<-fread("instacart-market-basket-analysis/order_products__prior.csv")
+order_products_train<-fread("instacart-market-basket-analysis/order_products__train.csv")
+orders<-fread("instacart-market-basket-analysis/orders.csv")
+products<-fread("instacart-market-basket-analysis/products.csv")
+
+
+```
+
+<br><br>
+
+<center>
+$\large Data~Wrangling$ </center>
+
+<br><br>
+
+Since the dataset is very large, with Prior orders having 32 million rows, we subset the data to reduce calculation time. We did this by randomly sampling users, then only keeping their orders and prior order information by performing a semi join with the order prior and train datasets.
+```{r message=FALSE}
+library(writexl)
+set.seed(1)
+user_fraction <- 0.1
+users <- unique(orders$user_id)
+sample_users <- sample(users, round(user_fraction * length(users)))
+
+cat('Number of orders (before): ', nrow(orders))
+orders <- orders[user_id %in% sample_users]
+cat('Number of orders (after): ', nrow(orders))
+
+
+order_products_prior<-order_products_prior%>%semi_join(orders)
+order_products_train<-order_products_train%>%semi_join(orders)
+
+dim(order_products_prior)
+dim(order_products_train)
+```
+
+
+
+Logistic Regression and Association Rule Analysis
+
+Association Rules:
+-help understand buying patterns
+-help change potential layout of the app, ie placing certain items together
+-Trending items 
+-changing product catalogue design
+
+```{r}
+library(arules)
+library(arulesViz)
+
+
+head(orders)
+head(order_products_prior)
+
+
+
+```
+
+
+
+```{r}
+# update this variable for changing split ratio
+train_proportion = 0.7
+# build list of all users ID
+tmp = orders %>% filter(eval_set=='train') %>% distinct(user_id)
+# 70/30 split
+set.seed(1)
+train.rows = sample( 1:nrow(tmp), train_proportion * nrow(tmp) )
+train.users = tmp[train.rows,]  # select training rows, list of train users
+test.users  = tmp[-train.rows,] # select testing rows, list of test users
+
+cat("Total Rows in Training Users: ", length(train.users),"\nTotal Rows in Testing Users: ", nrow(test.users),"\nTrain/Test Split % : ",100*nrow(train.users)/(nrow(test.users)+nrow(train.users))," / ",100*nrow(test.users)/(nrow(test.users)+nrow(train.users)))
+
+
+
+
+```
+

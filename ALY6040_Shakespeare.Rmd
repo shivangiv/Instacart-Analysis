@@ -57,16 +57,12 @@ Bag of words: treats words as singular tokens and analyzes them separately.
 
 We divide the text file into 3 to better view the corpus and word count matrix. A corpus is a collection of documents- it is a datatype you can create using the 'tm' package.
 ```{r warning=FALSE, message=FALSE}
-#In order to have a better view of Corpus and word count matrix, 
-#we divide the original text file into three and you can download 
-#them from 1.txt, 2.txt and 3.txt.
-
-#Alternatively you can just run the following commands the 
-#download and store the files in a folder called data:
 
 library(RCurl)
 library(tm)
 library(SnowballC)
+library(wordcloud)
+
 dir.create("data")
 setwd("data")
 url <- "https://raw.githubusercontent.com/angerhang/statsTutorial/master/src/textMining/data/1.txt"
@@ -78,12 +74,17 @@ write(getURL(url), file = "3.txt")
 setwd("..")
 
 ```
+<br><br>
 
+
+<center>
+$\LARGE Analysis$  </center>
+<br><br>
 
 Next, we make a corpus object for our documents. There are 2 kinds- Pcorpus (permanent) and Vcorpus(volatile). We will use Vcorpus that will be stored in the RAM, to be more memory efficient.
 
 R needs to interpret each element in our text file as a document. The Source functions are used for this purpose. We use a Source function called DirSource() because our text data is contained in a directory. The output of this function is called a Source object.
-
+<br>
 ```{r}
 
 #we need to provide a source and there are three 
@@ -112,7 +113,7 @@ summary(shakespeare)
 #detailed overview than summary().
 
 ```
-
+<br><br>
 
 #### Data Cleaning
 
@@ -121,11 +122,11 @@ It is important to clean up the data before proceeding to analyse it, because th
 The argument lazy=TRUE is there so that the mapping is delayed until all of the content is accessed.
 We also remove punctiation and remove stopwords such as a an the, etc. First we take a look at all the stopwords ie highly frequent words in english that don't provide any information about the text using stopwords("en").
 
+There is a lot of information in those documents which is not particularly useful for text mining. So before proceeding any further, we will clean things up a bit. First we strip extra whitespace from a text document,followed by stemming words which removes affixes from words (so, for example, “run”, “runs” and “running” all become “run”) and then remove punctuation, numbers and common English stopwords. Possibly the list of English stop words is not entirely appropriate for Shakespearean English, but it is a reasonable starting point.
+
+<br><br>
 ```{r}
-library(wordcloud)
-#Cleaning data
-#We now want to transform the data we have before we actually conduct out analysis. Some classical method for cleaning are removing unnecessary white space, stemming and stop words removal and conversion to lower or upper case. For the ones don't know, stop words removal is to eliminate some common words that have little value in the analysis e.g. the and be.
-#Stem mining is to reduce derived words to their root form such as making says, said into say because they essentially have the same meanings. We do the cleaning with the help of tm_map which applies a function across all the documents.
+
 
 # Remove whitespace
 shakespeare <- tm_map(shakespeare, stripWhitespace, lazy=TRUE)
@@ -134,22 +135,34 @@ shakespeare <- tm_map(shakespeare, stemDocument, lazy=TRUE)
 # Remove punctuation
 shakespeare <- tm_map(shakespeare, removePunctuation, lazy=TRUE)
 
-# List standard English stop words
+
+#look at common english stopwords
 stopwords("en")
-shakespearestops<-c("a","an","the")
+
 # Remove stopwords
-shakespeare<-tm_map(shakespeare, content_transformer(removeWords), stopwords(shakespearestops), lazy=TRUE)
+shakespeare<-tm_map(shakespeare, content_transformer(removeWords),stopwords("en"))
 
 # Case conversion
 shakespeare<-tm_map(shakespeare, content_transformer(tolower), lazy = TRUE)
+```
+
+<br><br>
+If we have a look at what’s left, we find that it’s just the lowercase, stripped down version of the text
 
 
+#### Preprocessing and Analysis
+A term document matrix is a way of representing the words in the text as a table (or matrix) of numbers. The rows of the matrix represent the text responses to be analysed, and the columns of the matrix represent the words from the text that are to be used in the analysis. Next we create a Term Document Matrix (TDM) which reflects the number of times each word in the corpus is found in each of the documents.
 
+```{r}
 #Term document matrix
 #at this point our data is ready for analysis
 
 dtm <- DocumentTermMatrix(shakespeare)
+```
 
+Then we look at the terms which has appeared most frequently. 
+
+```{r}
 #Essentially the frequency of a word is a representation 
 #of its importance. We have see the terms that show 
 #up more than 25 times
@@ -158,7 +171,10 @@ highFreqTerms <- findFreqTerms(dtm, 25, Inf)
 summary(highFreqTerms)
 
 highFreqTerms[1:10]
+```
 
+There are also associations between words. Let’s have a look at what other words had a high association with “love”.
+```{r}
 #We can also find the words that have a 
 #certain correlations with one word in the 
 #term document matrix. The correlation value is one 
@@ -168,7 +184,11 @@ highFreqTerms[1:10]
 #higher than 0.95 with the word love.
 
 loves_assocs <- findAssocs(dtm, "love", 0.95)
-
+```
+<br><br>
+The colour scale indicates the number of times that each of the terms cropped up in each of the documents.
+<br>
+```{r}
 #visualization on all the words that have frequency higher than 2500.
 
 
@@ -182,9 +202,10 @@ wordcloud(names(freq), freq, min.freq=2500, max.words = 100, colors=brewer.pal(8
 barplot(freq[1:50], xlab = "term", ylab = "frequency",  col=heat.colors(50))
 
 
-
-
 ```
 
-References:
+
+<center>
+$\LARGE References$  </center>
+<br><br>
 https://campus.datacamp.com/courses/text-mining-with-bag-of-words-in-r/jumping-into-text-mining-with-bag-of-words?ex=6
