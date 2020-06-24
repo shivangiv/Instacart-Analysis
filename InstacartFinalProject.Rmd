@@ -1,0 +1,265 @@
+---
+title: "InstacartFinalProject"
+author: "Yihong Qiu"
+date: "6/23/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+<center>
+
+
+### ALY 6040 Data Mining Applications
+### Assignment 3: Instacart Final Project
+### Shivangi Vashi
+### Yihong Qiu
+### Md Tajrianul Islam
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+  
+### Instructor: Kasun Samarasinghe
+### Spring 2020
+### June 23 2020
+### Northeastern University
+</center>
+
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+<br> <br> <br> <br>
+
+<style>
+body {
+text-align: justify}
+</style>
+
+<center>
+$\LARGE Introduction$  </center>
+<br><br>
+
+Instacart is a grocery delivery application that works in the following way- users can select products through the app, and then personal shoppers review the order, shop in-store and deliver the products to the users.
+We got the data from Instacart's Market Basket Analysis on kaggle.com [here](https://www.kaggle.com/c/instacart-market-basket-analysis/overview).
+
+The Instacart data set is anonymized and contains samples of over 3 million grocery orders from 200,000+ Instacart users.  <br>
+
+The reason we chose this data is because it is varied and some very clear applications for resolving business questions. It will allow us to perform different data mining algorithms and analyze it in different ways. It also has time information with enough granularity, so the option of some time series analysis is also there. <br><br>
+
+In this final project, there are four parts of the Instacart Market Basket analysis. The first part is EDA.
+The second part is Association Rule Mining. The third part is Logistic Regression. The fourth part is model selection for Logistic Regression via Association Rule Mining. <br><br><br>
+
+
+
+Reading the dataset,importing relevant libraries.
+```{r message=FALSE, warning=FALSE}
+
+library(plyr)
+library(data.table)
+library(rpart)
+library(RColorBrewer)
+library(rattle)
+library(tidyverse)
+library(data.table)
+library(dplyr)
+library(arules)
+library(arulesViz)
+library(plotly)
+library(IRdisplay)
+library(grid)
+
+
+#using fread because it reads data very fast
+#aisles<-fread("instacart-market-basket-analysis/aisles.csv")
+#departments<-fread("instacart-market-basket-analysis/departments.csv")
+order_products_prior<-fread("instacart-market-basket-analysis/order_products__prior.csv")
+order_products_train<-fread("instacart-market-basket-analysis/order_products__train.csv")
+orders<-fread("instacart-market-basket-analysis/orders.csv")
+products<-fread("instacart-market-basket-analysis/products.csv")
+
+```
+<br><br>
+
+
+<center>
+$\large Data~Wrangling$ </center>
+<br><br>
+
+
+#### Data Preparation
+<br>
+Since the dataset is very large, with Prior orders having 32 million rows, we subset the data to reduce calculation time. We did this by randomly sampling users, then only keeping their orders and prior order information by performing inner joins with the order prior and train datasets.
+<br>
+
+```{r message=FALSE}
+set.seed(123)
+user_fraction <- 0.1
+users <- unique(orders$user_id)
+sample_users <- sample(users, round(user_fraction * length(users)))
+
+cat('Number of orders (before): ', nrow(orders))
+orders <- orders[user_id %in% sample_users]
+cat('Number of orders (after): ', nrow(orders))
+
+# Training dataset
+OrderProductPrior<-orders%>%inner_join(order_products_prior)
+OrderProductPrior<-drop_na(OrderProductPrior)
+
+
+#Testing dataset
+OrderProductTrain<-orders%>%inner_join(order_products_train)
+OrderProductTrain<-drop_na(OrderProductTrain)
+
+
+dim(OrderProductPrior)
+dim(OrderProductTrain)
+head(OrderProductPrior)
+head(OrderProductTrain)
+
+```
+<br><br>
+
+For the Market Basket Analysis, only the order_products__prior and product are utilized and the same are joined on basis of product id. 
+```{r}
+basket_data <- left_join(OrderProductPrior, products, by='product_id')
+head(basket_data)
+basket_data <-  group_by(basket_data, order_id)
+basket_data <- summarise(basket_data,itens=as.vector(list(product_name)))
+head(basket_data)
+```
+Since the eclat and apriori functions are only valid on transaction format, henceforth the format is converted to the transaction type with the help of below code snippet. 
+
+```{r}
+transactions=as(basket_data$itens, 'transactions')
+head(transactions)
+length(transactions)
+```
+
+<center>
+${\large Data~Exploration}$ </center>
+<br><br>
+
+```{r}
+
+
+```
+
+
+
+<center>
+$\large Association Rules Mining$ </center>
+<br><br>
+
+
+```{r}
+# Support and confidence values
+supportLevels <- c(0.1, 0.05, 0.01, 0.005)
+confidenceLevels <- c(0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1)
+
+# Empty integers 
+rules_sup10 <- integer(length=9)
+rules_sup5 <- integer(length=9)
+rules_sup1 <- integer(length=9)
+rules_sup0.5 <- integer(length=9)
+
+# Apriori algorithm with a support level of 10%
+for (i in 1:length(confidenceLevels)) {
+  
+  rules_sup10[i] <- length(apriori(transactions, parameter=list(sup=supportLevels[1], 
+                                   conf=confidenceLevels[i], target="rules")))
+  
+}
+
+# Apriori algorithm with a support level of 5%
+for (i in 1:length(confidenceLevels)){
+  
+  rules_sup5[i] <- length(apriori(transactions, parameter=list(sup=supportLevels[2], 
+                                  conf=confidenceLevels[i], target="rules")))
+  
+}
+
+# Apriori algorithm with a support level of 1%
+for (i in 1:length(confidenceLevels)){
+  
+  rules_sup1[i] <- length(apriori(transactions, parameter=list(sup=supportLevels[3], 
+                                  conf=confidenceLevels[i], target="rules")))
+  
+}
+
+# Apriori algorithm with a support level of 0.5%
+for (i in 1:length(confidenceLevels)){
+  
+  rules_sup0.5[i] <- length(apriori(transactions, parameter=list(sup=supportLevels[4], 
+                                    conf=confidenceLevels[i], target="rules")))
+  
+}
+```
+
+
+```{r}
+# Number of rules found with a support level of 10%
+plot1 <- qplot(confidenceLevels, rules_sup10, geom=c("point", "line"), 
+               xlab="Confidence level", ylab="Number of rules found", 
+               main="Apriori with a support level of 10%") +
+  theme_bw()
+
+# Number of rules found with a support level of 5%
+plot2 <- qplot(confidenceLevels, rules_sup5, geom=c("point", "line"), 
+               xlab="Confidence level", ylab="Number of rules found", 
+               main="Apriori with a support level of 5%") + 
+  scale_y_continuous(breaks=seq(0, 10, 2)) +
+  theme_bw()
+
+# Number of rules found with a support level of 1%
+plot3 <- qplot(confidenceLevels, rules_sup1, geom=c("point", "line"), 
+               xlab="Confidence level", ylab="Number of rules found", 
+               main="Apriori with a support level of 1%") + 
+  scale_y_continuous(breaks=seq(0, 50, 10)) +
+  theme_bw()
+
+# Number of rules found with a support level of 0.5%
+plot4 <- qplot(confidenceLevels, rules_sup0.5, geom=c("point", "line"), 
+               xlab="Confidence level", ylab="Number of rules found", 
+               main="Apriori with a support level of 0.5%") + 
+  scale_y_continuous(breaks=seq(0, 130, 20)) +
+  theme_bw()
+
+# Subplot
+plot1 
+plot2 
+plot3
+plot4
+```
+```{r}
+rules1 <- apriori(transactions, parameter = list(supp = 0.1, conf = 0.5, maxlen=3), control = list(verbose = FALSE))
+plotly_arules(rules1)
+rules2 <- apriori(transactions, parameter = list(supp = 0.001, conf = 0.4, maxlen=3), control = list(verbose = FALSE))
+rules3 <- apriori(transactions, parameter = list(supp = 0.005, conf = 0.1, maxlen=3), control = list(verbose = FALSE))
+```
+
+
+<center>
+$\large Logistic Regression$ </center>
+<br><br>
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
