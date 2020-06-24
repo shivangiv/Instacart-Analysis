@@ -48,31 +48,29 @@ The Instacart data set is anonymized and contains samples of over 3 million groc
 The reason we chose this data is because it is varied and some very clear applications for resolving business questions. It will allow us to perform different data mining algorithms and analyze it in different ways. It also has time information with enough granularity, so the option of some time series analysis is also there. <br><br>
 
 In this final project, there are four parts of the Instacart Market Basket analysis. The first part is EDA.
-The second part is Association Rule Mining. The third part is Logistic Regression. The fourth part is model selection for Logistic Regression via Association Rule Mining. <br><br><br>
-
+The second part is Association Rule Mining. The third part is Logistic Regression. The fourth part is model selection for Logistic Regression via Association Rule Mining. 
+<br><br>
 
 
 Reading the dataset,importing relevant libraries.
 ```{r message=FALSE, warning=FALSE}
-
 library(plyr)
 library(data.table)
-library(rpart)
-library(RColorBrewer)
-library(rattle)
 library(tidyverse)
-library(data.table)
 library(dplyr)
+library(ggplot2)
 library(arules)
 library(arulesViz)
 library(plotly)
 library(IRdisplay)
 library(grid)
+library(caret)
+library(glmnet)
 
 
 #using fread because it reads data very fast
-#aisles<-fread("instacart-market-basket-analysis/aisles.csv")
-#departments<-fread("instacart-market-basket-analysis/departments.csv")
+aisles<-fread("instacart-market-basket-analysis/aisles.csv")
+departments<-fread("instacart-market-basket-analysis/departments.csv")
 order_products_prior<-fread("instacart-market-basket-analysis/order_products__prior.csv")
 order_products_train<-fread("instacart-market-basket-analysis/order_products__train.csv")
 orders<-fread("instacart-market-basket-analysis/orders.csv")
@@ -86,13 +84,29 @@ products<-fread("instacart-market-basket-analysis/products.csv")
 $\large Data~Wrangling$ </center>
 <br><br>
 
-
 #### Data Preparation
+
+```{r message=FALSE}
+# Taking a quick look at the data
+head(aisles)
+head(departments)
+head(order_products_prior)
+head(order_products_train)
+head(orders)
+head(products)
+
+#Remove missing values
+aisles<-drop_na(aisles)
+departments<-drop_na(departments)
+order_products_prior<-drop_na(order_products_prior)
+order_products_train<-drop_na(order_products_train)
+orders<-drop_na(orders)
+products<-drop_na(products)
+```
 <br>
 Since the dataset is very large, with Prior orders having 32 million rows, we subset the data to reduce calculation time. We did this by randomly sampling users, then only keeping their orders and prior order information by performing inner joins with the order prior and train datasets.
 <br>
-
-```{r message=FALSE}
+```{r}
 set.seed(123)
 user_fraction <- 0.1
 users <- unique(orders$user_id)
@@ -120,6 +134,77 @@ head(OrderProductTrain)
 ```
 <br><br>
 
+<center>
+${\large Data Exploration}$ </center>
+<br><br>
+
+#### Ordering patterns 
+<br>
+First, we find out most orders are placed during 9am to 5 pm during the day. Additionally, assuming Sunday is the first, ie 0 = Sunday in the dataset, Sundays and Mondays are when most orders are placed. 
+<br>
+```{r}
+# When do people order most during the day?
+orders%>%
+  dplyr::group_by(order_hour_of_day)%>%
+  dplyr::summarise(Number_of_Orders=dplyr::n())%>%
+  ggplot(aes(y=Number_of_Orders, x=order_hour_of_day, fill=Number_of_Orders)) + geom_col()+ coord_cartesian(xlim = c(0, 24))+ labs(y="Number of Orders", x="Hour of the Day")
+
+#What days of the week do people order during the week
+orders%>%
+  dplyr::group_by(order_dow)%>%
+  dplyr::summarise(Number_of_Orders=dplyr::n())%>%
+  ggplot(aes(y=Number_of_Orders, x=order_dow, fill=Number_of_Orders)) + geom_col()+ labs(y="Number of Orders", x="Day of the Week starting Sunday" )
+
+
+```
+<br><br>
+
+#### The frequency of reordering
+<br>
+Then we find out the average days of users who reorder their groceries is from 7 to 11 days. Many customers reorder after 7 days or 30 days.
+<br>
+```{r}
+summary(orders$days_since_prior_order)
+
+ggplot(orders, aes(x=days_since_prior_order))+ 
+  geom_boxplot(mapping=aes("var",days_since_prior_order),colour="black",fill="#AC88FF")+
+  xlab("")+
+  ylab("days_since_prior_order")+
+  ggtitle("Days since Prior Order Boxplot")
+
+ggplot(orders, aes(x=days_since_prior_order))+ 
+  geom_histogram(aes(y =..density..),stat = "bin", bins= 30, colour="black", fill="lavenderblush")+
+  geom_density(alpha=.2,fill="plum")+
+  ggtitle("Days since Prior Order Density Plot")
+
+```
+<br><br>
+
+#### The most popular products
+<br><br>
+By descending ordering products that are added into cart order, we find out the top 10 popular products. The top No.1 popular product is Organic 100% Grapefruit Juice.
+<br><br>
+```{r}
+pop_products<-inner_join(order_products_prior, products, by =c("product_id"))
+pop_products<-as.data.frame(pop_products)
+pop_products<-pop_products %>% select(5, 3)
+top_products<-head(arrange(pop_products,desc(pop_products$add_to_cart_order)), n = 10)
+top_products
+
+ggplot(top_products)+
+  geom_bar(aes(reorder(product_name,-add_to_cart_order),add_to_cart_order, fill= add_to_cart_order),
+           stat = "identity", color = "grey", fill = "#00BFC4") +
+  labs(title = "Most Popular Products Added to Cart Order", x = "product names", y = "add to cart order") +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1))
+
+```
+<br><br>
+
+
+<center>
+$\large Association Rules Mining$ </center>
+<br><br>
+
 For the Market Basket Analysis, only the order_products__prior and product are utilized and the same are joined on basis of product id. 
 ```{r}
 basket_data <- left_join(OrderProductPrior, products, by='product_id')
@@ -135,21 +220,6 @@ transactions=as(basket_data$itens, 'transactions')
 head(transactions)
 length(transactions)
 ```
-
-<center>
-${\large Data~Exploration}$ </center>
-<br><br>
-
-```{r}
-
-
-```
-
-
-
-<center>
-$\large Association Rules Mining$ </center>
-<br><br>
 
 
 ```{r}
@@ -237,6 +307,7 @@ plotly_arules(rules1)
 rules2 <- apriori(transactions, parameter = list(supp = 0.001, conf = 0.4, maxlen=3), control = list(verbose = FALSE))
 rules3 <- apriori(transactions, parameter = list(supp = 0.005, conf = 0.1, maxlen=3), control = list(verbose = FALSE))
 ```
+<br><br>
 
 
 <center>
@@ -244,22 +315,161 @@ $\large Logistic Regression$ </center>
 <br><br>
 
 ```{r}
+## Preparing data for modelling
+OrderProductPrior_log<-orders%>%inner_join(order_products_prior)%>%inner_join(products)
+OrderProductPrior_log<-drop_na(OrderProductPrior_log)
+OrderProductPrior_log<-OrderProductPrior_log[-c(3)]
 
+OrderHour <- OrderProductPrior_log[-c(1,2,7,10)]
 
+OrderProductTrain_log<-orders%>%inner_join(order_products_train)%>%inner_join(products)
+OrderProductTrain_log<-drop_na(OrderProductTrain_log)
+OrderProductTrain_log<-OrderProductTrain_log[-c(3)]
+```
 
+<br>
+We perform logistic regression to predict the variable 'reorder'. Since it is a binary variable with 2 classes,1 and 0, it becomes a classification problem.
+As we know from our EDA, Instacart has a lot of loyal customers, who order bi-weekly or monthly. While ordering they also reorder a lot of the same products. So predicting whether a user will reorder or not, may help us later to understand what products to recommend while they are purchasing.
+<br>
 
+```{r}
+user <- OrderProductPrior_log %>% 
+  group_by(user_id) %>% 
+  mutate(days_since_prior_order = as.numeric(days_since_prior_order)) %>%
+  transmute(total_orders = n_distinct(order_id), avg_days_since_prior_order= mean(days_since_prior_order, na.rm = TRUE), avg_no_items = max(add_to_cart_order), reordered= reordered, order_day = order_dow, product_id=product_id)
 
+reorder_log <- user[-c(1)]
+head(reorder_log)
+```
+<br><br>
 
+So we created a new dataframe dropped the user_id and use all the other columns to predict the reorders with logistic regression. Our regression depends variables such as the total number orders a user has, after how many days he is ordering, how many products he is adding to the cart, which day he is ordering and which products usually get reordered. For a example if a user usually shops bi weekly, on sunday and orders milk; he might have very less chances of ordering milk if he is back withing 2 or 3 days of his last purchase.
 
-
-
-
-
+#### Model
+We use glm with family="binomial" to create the model. We use all of the variables for this model.
+```{r}
+#Fitting a binary logistic regression
+log_model <- glm(reordered ~., data = reorder_log, family = "binomial")
+#Model summary
+summary(log_model)
 
 ```
 
 
+#### Predicting using the model
+
+We predict the reorder variable using predict function.
+```{r}
+
+user2 <- OrderProductTrain_log %>% 
+  group_by(user_id) %>% 
+  mutate(days_since_prior_order = as.numeric(days_since_prior_order)) %>%
+  transmute(total_orders = n_distinct(order_id), avg_days_since_prior_order= mean(days_since_prior_order, na.rm = TRUE), avg_no_items = max(add_to_cart_order), reordered= reordered, order_day = order_dow, product_id=product_id)
+
+reorder_log2 <- user2[-c(1)]
+head(reorder_log2)
+
+#Prediction
+pred <- predict(log_model, reorder_log2, type = "response")
+#If p > 0.5, then Class is 1 else 0
+y_pred <- ifelse(pred > 0.5, 1, 0)
+y_act <- reorder_log2$reordered
+
+#Accuracy
+mean(y_pred == y_act) 
+
+## Another method
+y_pred<-as.factor(y_pred)
+y_act<-as.factor(y_act)
+cm<-confusionMatrix(data=y_pred, 
+  reference=y_act)
+
+Accuracy<-round(cm$overall[1],2)
+Accuracy
+```
+<br><br>
+
+<br>
+Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 54% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
+<br>
 
 
+#### The Confusion Matrix
 
+```{r}
+cm 
+```
+Sensitivity is the percentage of actual 1’s that were correctly predicted. It shows what percentage of 1’s were covered by the model. The sensitivity is 69.69%, which is okay.
+Likewise, Specificity is the proportion of actual 0’s that were correctly predicted. So in this case, it is 42.77%, which does not perform well.
+<br><br>
+
+
+#### Lasso Regression for regularization
+
+We use lasso regression to remove extra predictors and push them to 0,to try to improve our model.
+```{r message=FALSE}
+xfactors <- model.matrix(reordered ~ order_dow + order_hour_of_day + days_since_prior_order + product_id, data=OrderProductPrior_log)[, -1]
+x <- as.matrix(data.frame(xfactors))
+
+# Note alpha=1 for lasso only and can blend with ridge penalty down to
+# alpha=0 ridge only.
+glmmod <- glmnet(x, y=as.factor(OrderProductPrior_log$reordered), alpha=1, family="binomial")
+```
+<br><br>
+
+##### Lasso plot and ROC
+
+
+Each colored line in the lasso plot represents the value taken by a different coefficient in the model. Lambda is the weight given to the regularization term (the L1 norm), so as lambda approaches zero, the loss function of your model approaches the OLS loss function (David Marx,2013).
+
+The second plot is the ROC. It shows the lambda values and their MSE. $\lambda$min and $\lambda$1se are both shown by the vertical line.
+<br>
+
+```{r}
+# Plot variable coefficients vs. shrinkage parameter lambda.
+
+plot(glmmod, xvar="norm", label=TRUE)
+
+ROCcurve<-cv.glmnet(x,OrderProductPrior_log$reordered)
+plot(ROCcurve)
+
+sprintf("Minimum value of lambda that minimizes mean CV error: %# .7f", ROCcurve$lambda.min)
+
+
+```
+
+<br><br>
+
+####  Get estimated beta matrix
+
+Using the min lambda value found, we find the estimated beta matrix. This shows which coefficients have been shrunk to zero and which still exist. This shows which are the important variables that explain the variation in the dependent variable y. 
+
+<br>
+
+```{r}
+
+newmodel_cv<-glmnet(x,OrderProductPrior_log$reordered,lambda=ROCcurve$lambda.min, standardize = TRUE)
+newmodel_cv$beta
+
+set.seed(123)
+control_cv<-trainControl(method = "cv",number=10)
+lassoGrid_train<-expand.grid(alpha = 1, lambda = seq(0.001,0.1,by = 0.0005))
+lasso_model_train<-train(x=x,y=as.factor(OrderProductPrior_log$reordered), method = 'glmnet', trControl = control_cv, tuneGrid = lassoGrid_train)
+lasso_model_train$bestTune
+
+max(lasso_model_train$results$Accuracy)
+
+
+#lambda 1 standard error away
+ROCcurve$lambda.1se
+
+model_1se<- glmnet(x, OrderProductPrior_log$reordered, lambda = ROCcurve$lambda.1se)
+model_1se$beta
+```
+
+<br><br>
+
+More variables are removed upon using the lambda 1 standard deviation away. The 1 se rule is a standard one when performing lasso regression. The main point of the 1 SE rule is to choose the simplest model whose accuracy is comparable with the best model, according to (Friedman, Hastie, and Tibshirani,2010).
+
+<br><br>
 
