@@ -220,7 +220,19 @@ transactions=as(basket_data$itens, 'transactions')
 head(transactions)
 length(transactions)
 ```
+Association Rules
 
+Setting the Support and Confidence Intervals.
+
+Understanding support
+
+A value of Support =0.02 means that an item will be considered as frequent if at least 2 percent of all the baskets contain it.
+
+Understanding Confidence
+
+Confidence is a measure of the strength of an association rule. It is the frequency of occurrence of the right-hand items in the rule from among those baskets that contain the items on the left-hand side of the rule.
+
+So now we have created a function that will plot the number of rules we can generate depending on different support levels and varied upon different confidence levels. 
 
 ```{r}
 # Support and confidence values
@@ -301,6 +313,7 @@ plot2
 plot3
 plot4
 ```
+So we create thre different rules based on different support and confidence settings. And what we get to see is due to having a large dataset the chances of getting rules that appears 10% of the time is very low. Although when we reduce the support level, we tend to get amount of rules that can be helpful to build a recommendation system. 
 ```{r}
 rules1 <- apriori(transactions, parameter = list(supp = 0.1, conf = 0.5, maxlen=3), control = list(verbose = FALSE))
 plotly_arules(rules1)
