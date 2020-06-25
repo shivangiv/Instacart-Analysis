@@ -13,7 +13,6 @@ $\large Association~Rules~Mining$ </center>
 For the Market Basket Analysis, only the order_products__prior and product are utilized and the same are joined on basis of product id. 
 <br>
 ```{r}
-
 basket_data <- left_join(OrderProductPrior, products, by='product_id')
 basket_data <-  group_by(basket_data, order_id)
 basket_data <- summarise(basket_data,items=as.vector(list(product_name)))
@@ -252,8 +251,7 @@ test$eval_set <- NULL
 test$user_id <- NULL
 test$reordered <- NULL
 
-rm(user_product_cart)
-gc()
+
 
 #we got our training and testing data
 # we have taken only numeric data because we will be using xgboost
@@ -310,21 +308,20 @@ model <- xgboost(data = X, params = params, nrounds = 80)
 importance <- xgb.importance(colnames(X), model = model)
 xgb.ggplot.importance(importance)
 
-rm(X, subtrain)
-gc()
-
+X2 <- xgb.DMatrix(as.matrix(test %>% select(-order_id, -product_id)))
+test$reordered <- predict(model, X2)
 # predicting reordered values from test dataset
-p <- predict(model, X)
 
+
+#Test error 
+p<-test$reordered
 err <- mean(as.numeric(p > 0.5) != train$reordered)
 print(paste("test-error=", err))
 
-F1_Score(train$reordered,p2,positive="1")
-
 
 #Accuracy
-p2 <- (p > 0.21) * 1
-mean(p2 == train$reordered) 
+test$reordered <- (test$reordered > 0.21) * 1
+
 
       
 # summarise as order_id and products

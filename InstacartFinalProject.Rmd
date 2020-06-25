@@ -101,6 +101,49 @@ $\large Data~Wrangling$ </center>
 
 #### Data Preparation
 
+
+<br>
+
+
+Since the dataset is very large, with Prior orders having 32 million rows, we subset the data to reduce calculation time. We did this by randomly sampling users, then only keeping their orders and prior order information by performing inner joins with the order prior and train datasets.
+
+<br>
+
+```{r}
+set.seed(123)
+user_fraction <- 0.1
+users <- unique(orders$user_id)
+sample_users <- sample(users, round(user_fraction * length(users)))
+
+cat('Number of orders (before): ', nrow(orders))
+orders <- orders[user_id %in% sample_users]
+cat('Number of orders (after): ', nrow(orders))
+
+# Training dataset
+OrderProductPrior<-orders%>%inner_join(order_products_prior)
+OrderProductPrior<-drop_na(OrderProductPrior)
+
+
+#Testing dataset
+OrderProductTrain<-orders%>%inner_join(order_products_train)
+OrderProductTrain<-drop_na(OrderProductTrain)
+
+
+order_products_prior<-order_products_prior%>%semi_join(orders)
+order_products_train<-order_products_train%>%semi_join(orders)
+dim(order_products_prior)
+dim(order_products_train)
+
+dim(OrderProductPrior)
+dim(OrderProductTrain)
+head(OrderProductPrior)
+head(OrderProductTrain)
+
+```
+
+<br><br>
+
+
 ```{r message=FALSE}
 # Taking a quick look at the data
 head(aisles)
@@ -136,44 +179,7 @@ aisles$aisle <- as.factor(aisles$aisle)
 departments$department <- as.factor(departments$department)
 products$product_name <- as.factor(products$product_name)
 ```
-<br>
 
-
-Since the dataset is very large, with Prior orders having 32 million rows, we subset the data to reduce calculation time. We did this by randomly sampling users, then only keeping their orders and prior order information by performing inner joins with the order prior and train datasets.
-
-<br>
-
-```{r}
-set.seed(123)
-user_fraction <- 0.1
-users <- unique(orders$user_id)
-sample_users <- sample(users, round(user_fraction * length(users)))
-
-cat('Number of orders (before): ', nrow(orders))
-orders <- orders[user_id %in% sample_users]
-cat('Number of orders (after): ', nrow(orders))
-
-order_products_prior<-order_products_prior%>%semi_join(orders)
-order_products_train<-order_products_train%>%semi_join(orders)
-
-
-# Training dataset
-OrderProductPrior<-orders%>%inner_join(order_products_prior)
-OrderProductPrior<-drop_na(OrderProductPrior)
-
-
-#Testing dataset
-OrderProductTrain<-orders%>%inner_join(order_products_train)
-OrderProductTrain<-drop_na(OrderProductTrain)
-
-
-dim(OrderProductPrior)
-dim(OrderProductTrain)
-head(OrderProductPrior)
-head(OrderProductTrain)
-
-```
-<br><br>
 
 <center>
 ${\large Data Exploration}$ </center>
@@ -487,343 +493,6 @@ model_1se$beta
 More variables are removed upon using the lambda 1 standard deviation away. The 1 se rule is a standard one when performing lasso regression. The main point of the 1 SE rule is to choose the simplest model whose accuracy is comparable with the best model, according to (Friedman, Hastie, and Tibshirani,2010).
 
 <br><br>
-
-
-<center>
-$\large Association~Rules~Mining$ </center>
-
-<br><br>
-
-For the Market Basket Analysis, only the order_products__prior and product are utilized and the same are joined on basis of product id. 
-<br>
-```{r}
-
-basket_data <- left_join(OrderProductPrior, products, by='product_id')%>%
-              group_by(order_id)%>%
-              summarise(items=as.vector(list(product_name)))
-head(basket_data)
-```
-
-<br>
-Since the eclat and apriori functions are only valid on transaction format, henceforth the format is converted to the transaction type with the help of below code snippet. 
-
-```{r}
-transactions=as(basket_data$items, 'transactions')
-head(transactions)
-length(transactions)
-```
-
-#### Setting the Support and Confidence Intervals<br>
-
-Understanding support<br>
-
-A value of Support =0.02 means that an item will be considered as frequent if at least 2 percent of all the baskets contain it.
-
-Understanding Confidence<br>
-
-Confidence is a measure of the strength of an association rule. It is the frequency of occurrence of the right-hand items in the rule from among those baskets that contain the items on the left-hand side of the rule.
-
-So now we have created a function that will plot the number of rules we can generate depending on different support levels and varied upon different confidence levels. 
-<br>
-```{r}
-# Support and confidence values
-supportLevels <- c(0.1, 0.05, 0.01, 0.005)
-confidenceLevels <- c(0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1)
-
-# Empty integers 
-rules_sup10 <- integer(length=9)
-rules_sup5 <- integer(length=9)
-rules_sup1 <- integer(length=9)
-rules_sup0.5 <- integer(length=9)
-
-# Apriori algorithm with a support level of 10%
-for (i in 1:length(confidenceLevels)) {
-  
-  rules_sup10[i] <- length(apriori(transactions, parameter=list(sup=supportLevels[1], 
-                                   conf=confidenceLevels[i], target="rules")))
-  
-}
-
-# Apriori algorithm with a support level of 5%
-for (i in 1:length(confidenceLevels)){
-  
-  rules_sup5[i] <- length(apriori(transactions, parameter=list(sup=supportLevels[2], 
-                                  conf=confidenceLevels[i], target="rules")))
-  
-}
-
-# Apriori algorithm with a support level of 1%
-for (i in 1:length(confidenceLevels)){
-  
-  rules_sup1[i] <- length(apriori(transactions, parameter=list(sup=supportLevels[3], 
-                                  conf=confidenceLevels[i], target="rules")))
-  
-}
-
-# Apriori algorithm with a support level of 0.5%
-for (i in 1:length(confidenceLevels)){
-  
-  rules_sup0.5[i] <- length(apriori(transactions, parameter=list(sup=supportLevels[4], 
-                                    conf=confidenceLevels[i], target="rules")))
-  
-}
-```
-
-
-
-
-```{r}
-# Number of rules found with a support level of 10%
-plot1 <- qplot(confidenceLevels, rules_sup10, geom=c("point", "line"), 
-               xlab="Confidence level", ylab="Number of rules found", 
-               main="Apriori with a support level of 10%") +
-  theme_bw()
-
-# Number of rules found with a support level of 5%
-plot2 <- qplot(confidenceLevels, rules_sup5, geom=c("point", "line"), 
-               xlab="Confidence level", ylab="Number of rules found", 
-               main="Apriori with a support level of 5%") + 
-  scale_y_continuous(breaks=seq(0, 10, 2)) +
-  theme_bw()
-
-# Number of rules found with a support level of 1%
-plot3 <- qplot(confidenceLevels, rules_sup1, geom=c("point", "line"), 
-               xlab="Confidence level", ylab="Number of rules found", 
-               main="Apriori with a support level of 1%") + 
-  scale_y_continuous(breaks=seq(0, 50, 10)) +
-  theme_bw()
-
-# Number of rules found with a support level of 0.5%
-plot4 <- qplot(confidenceLevels, rules_sup0.5, geom=c("point", "line"), 
-               xlab="Confidence level", ylab="Number of rules found", 
-               main="Apriori with a support level of 0.5%") + 
-  scale_y_continuous(breaks=seq(0, 130, 20)) +
-  theme_bw()
-
-# Subplot
-plot1 
-plot2 
-plot3
-plot4
-```
-
-
-```{r}
-rules1 <- apriori(transactions, parameter = list(supp = 0.1, conf = 0.5, maxlen=3), control = list(verbose = FALSE))
-as(rules1,"data.frame")
-rules2 <- apriori(transactions, parameter = list(supp = 0.001, conf = 0.4, maxlen=3), control = list(verbose = FALSE))
-as(rules2,"data.frame")
-rules3 <- apriori(transactions, parameter = list(supp = 0.005, conf = 0.1, maxlen=3), control = list(verbose = FALSE))
-as(rules3,"data.frame")
-
-plot(rules2, method="paracoord",  control=list(alpha=.5, reorder=TRUE))
-
-plot(rules2, method = "grouped", control = list(k = 5))
-```
-<br><br>
-
-
-<center>
-$\large Association~Rules~Mining~using~Gradient~Boosting$ </center>
-
-
-
-#### Feature engineering
-
-
-
-```{r}
-# xgboost- Gradient Boosting
-library(xgboost)
-# Creating a product level by combing product, department, aisles
-product_level <- merge(x = products, y = aisles, by = "aisle_id")
-product_level <- merge(x = product_level, y = departments, by = "department_id")
-product_level$department_id <- NULL
-product_level$aisle_id <- NULL
-product_level <- arrange(product_level, product_id)
-
-# removing unused data
-rm(aisles,departments, products)
-gc()
-
-
-# combining order data and prior data
-ordered_products <- merge(x = orders, y = order_products_prior, by = "order_id")
-rm(order_products_prior)
-gc()
-
-
-
-# product reorder probability and avg_cart_position of each cart
-product_prob<-ordered_products %>%
-        arrange(user_id, order_number, product_id) %>%
-        group_by(product_id) %>% 
-        summarise(product_orders = n(), product_reorders = sum(reordered), avg_cart_pos = mean(add_to_cart_order))
-
-product_prob$reorder_prob <- product_prob$product_reorders/product_prob$product_orders
-product_prob$product_reorders <- NULL
-
-# calculating user buy prob
-
-# calculating user order probability by looking at its prior orders 
-users_prob<-orders %>%
-          filter(eval_set == "prior") %>%
-          group_by(user_id) %>% 
-          summarise(user_orders = max(order_number), user_period = sum(days_since_prior_order, na.rm = TRUE), avg_days_since_prior = mean(days_since_prior_order, na.rm = TRUE))
-
-# calculating total_products, reorder probability and num of products
-users_reorder_prob <- ordered_products %>%
-              group_by(user_id) %>%
-              summarise(user_total_products = n(), user_reorder_prob = sum(reordered == 1) / sum(order_number > 1),num_products = n_distinct(product_id))
-
-# merging above two to get user level
-users_prob<- merge(x = users_prob, y = users_reorder_prob, by = "user_id", all.x = TRUE)
-
-```
-
-
-
-##### Dividing the data into train and test
-The orders table has a flag eval_set that indicates whether the data is for training or testing. 
-```{r}
-
-# filtering training and testing data from orders
-train_test <- orders %>% filter(eval_set != "prior") %>% select(user_id, order_id, eval_set, days_since_prior_order)
-
-# left join users_prob with train_test data
-users_prob <- merge(x = users_prob, y = train_test, all.x = TRUE)
-
-rm(train_test)
-
-
-# calculating average cart position and total orders of each product user purchased
-user_product_cart <- ordered_products %>% group_by(user_id, product_id) %>% 
-  summarise( user_product_orders = n(), avg_user_product_pos = mean(add_to_cart_order))
-
-
-rm(users_reorder_prob, product_level,ordered_products)
-gc()
-
-
-# now combining all the user_level and product _level info
-user_product_cart <- merge(user_product_cart,product_prob, by = "product_id", all.x = TRUE)
-user_product_cart <- merge(user_product_cart,users_prob, by = "user_id", all.x = TRUE)
-
-
-#taking only user_ids that are common in orders
-order_products_train$user_id <- orders$user_id[match(order_products_train$order_id, orders$order_id)]
-# combining training data and infered data by product id and user id
-order_products_train <- order_products_train %>% select(user_id, product_id, reordered)
-user_product_cart <- merge(user_product_cart, order_products_train, by = c("user_id", "product_id"), all.x = TRUE)
-
-
-rm(product_prob, order_products_train, users_prob, orders)
-gc()
-
-# training data
-train <- as.data.frame(user_product_cart[user_product_cart$eval_set == "train",])
-# removing char - xgboost
-train$eval_set <- NULL
-#no need
-train$user_id <- NULL
-train$product_id <- NULL
-train$order_id <- NULL
-train$reordered[is.na(train$reordered)] <- 0
-
-# testing data
-test <- as.data.frame(user_product_cart[user_product_cart$eval_set == "test",])
-test$eval_set <- NULL
-test$user_id <- NULL
-test$reordered <- NULL
-
-rm(user_product_cart)
-gc()
-
-#we got our training and testing data
-# we have taken only numeric data because we will be using xgboost
-
-
-
-# Parameters for the xgboost model
-params <- list(
-  # logistic model
-  "objective"           = "reg:logistic",
-  
-  # logless for cross-validation
-  "eval_metric"         = "logloss", 
-  
-  #learning rate
-  "eta"                 = 0.1,
-  
-  #depth of tree
-  "max_depth"           = 6, 
-  
-  # min sum of weights
-  # should be high enough to prevent over fitting
-  # but not too high for over fitting
-  "min_child_weight"    = 10,
-  
-  # the min loss value require to split
-  "gamma"               = 0.70,
-  
-  # fraction of observations to be included in each tree 
-  # generally varies from 0.5-1
-  "subsample"           = 0.75,
-  
-  # fraction of column to be randomly sample in each tree
-  "colsample_bytree"    = 0.95,
-  
-  # regularization coefficients
-  "alpha"               = 2e-05,
-  "lambda"              = 10 
-)
-
-```
-
-
-#### XGBoost Model
-
-```{r}
-library(Ckmeans.1d.dp)
-library(MLmetrics)
-
-
-X <- xgb.DMatrix(as.matrix(train %>% select(-reordered)), label = train$reordered)
-model <- xgboost(data = X, params = params, nrounds = 80)
-
-importance <- xgb.importance(colnames(X), model = model)
-xgb.ggplot.importance(importance)
-
-rm(X, subtrain)
-gc()
-
-# predicting reordered values from test dataset
-p <- predict(model, X)
-
-err <- mean(as.numeric(p > 0.5) != train$reordered)
-print(paste("test-error=", err))
-
-F1_Score(train$reordered,p2,positive="1")
-
-
-#Accuracy
-p2 <- (p > 0.21) * 1
-mean(p2 == train$reordered) 
-
-      
-# summarise as order_id and products
-rules <- test %>% filter(reordered == 1) %>% group_by(order_id) %>%
-        summarise(products = paste(product_id, collapse = " "))
-
-# filliing the missing values
-missing <- data.frame(
-  order_id = unique(test$order_id[!test$order_id %in% rules$order_id]), products = "None")
-rules <- rules %>% bind_rows(missing) %>% arrange(order_id)
-
-head(rules,20)
-
-
-```
 
 
 
