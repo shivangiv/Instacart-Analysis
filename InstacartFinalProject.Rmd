@@ -2,15 +2,16 @@
 title: "InstacartFinalProject"
 author: "Shivangi Vashi"
 date: "6/23/2020"
-output: html_document
-number_sections: TRUE
-
+output:
+  html_document: default
+  pdf_document: default
+number_sections: yes
 ---
 <center>
 
 
 ### ALY 6040 Data Mining Applications
-### Assignment 3: Instacart Final Project
+### Instacart Final Project
 ### Shivangi Vashi
 ### Yihong Qiu
 ### Md Tajrianul Islam
@@ -47,7 +48,7 @@ The Instacart data set is anonymized and contains samples of over 3 million groc
 
 The reason we chose this data is because it is varied and some very clear applications for resolving business questions. It will allow us to perform different data mining algorithms and analyze it in different ways. It also has time information with enough granularity, so the option of some time series analysis is also there. <br><br>
 
-In this final project, there are four parts of the Instacart Market Basket analysis. The first part is EDA. We explore the frequency of reordering, when in a day or week do users order the most, popular products, and so on. This gives us an idea about user buying patterns.
+In this final project, there are four parts of the Instacart Market Basket analysis. The first part is EDA. We explore the frequency of reordering, when in a day or week do users order the most, popular products, and so on. This gives us an idea about user buying patterns. The other parts is using different methods to solve the business problem.
 
 Business Problem:
 
@@ -81,6 +82,7 @@ library(IRdisplay)
 library(grid)
 library(caret)
 library(glmnet)
+library(e1071)
 
 
 #using fread because it reads data very fast
@@ -101,12 +103,8 @@ $\large Data~Wrangling$ </center>
 
 #### Data Preparation
 
-
 <br>
-
-
 Since the dataset is very large, with Prior orders having 32 million rows, we subset the data to reduce calculation time. We did this by randomly sampling users, then only keeping their orders and prior order information by performing inner joins with the order prior and train datasets.
-
 <br>
 
 ```{r}
@@ -140,7 +138,6 @@ head(OrderProductPrior)
 head(OrderProductTrain)
 
 ```
-
 <br><br>
 
 
@@ -169,23 +166,22 @@ sapply(order_products_prior,class)
 sapply(order_products_train,class)
 sapply(orders,class)
 orders<-orders %>%mutate(order_hour_of_day=as.numeric(order_hour_of_day))
-orders
+head(orders)
 sapply(products,class)
 
-#Data Preparation
 #We recode and convert character variables to factors.
 orders$eval_set <-as.factor(orders$eval_set)
 aisles$aisle <- as.factor(aisles$aisle)
 departments$department <- as.factor(departments$department)
 products$product_name <- as.factor(products$product_name)
 ```
-
+<br><br>
 
 <center>
 ${\large Data Exploration}$ </center>
 <br><br>
 
-#### Ordering patterns 
+#### 1. Ordering patterns 
 <br>
 First, we find out most orders are placed during 9am to 5 pm during the day. Additionally, assuming Sunday is the first, ie 0 = Sunday in the dataset, Sundays and Mondays are when most orders are placed.
 <br>
@@ -207,20 +203,15 @@ orders%>%
 ```
 <br><br>
 
-Clearly, most orders are placed during 9am to 5 pm during the day. Additionally, assuming Sunday is the first, ie 0 = Sunday in the dataset, Sundays and Mondays are when most orders are placed.
-
 Using this information, Instacart could redirect their resources so that the higher volume of orders can be processed at these times efficiently. <br>
 <br> <br>
 
 #### 2. What is the frequency of reordering?
+
 <br>
 When exploring the frequency of reordering, first we filter prior eval_set and select data of days_since_prior_order, then we also clease all the na value from the dataset. 
 We find out in this 3,000,000 orders+ dataset, the average days of users who reorder their groceries is from 7 to 11 days. Many customers reorder after 7 days or 30 days.
 According to each customer's reordering behavior and how many days they would reorder through instacart,we can predict their next ordering day. Therefore, based on these analysis, it can provide suggestions to retails and suppliers which would be helpful for their purchase sales inventory stategies.
-
-In the future, we still need to find out the reason why a lot customers reorder after 30 days and what products do they get then we can draw the conculsion. Also, we will find out the correlation among the frequency of reordering, order hour of day, and ordering products and tracking customer consuming behaviors.
-
-
 <br>
 ```{r}
 summary(orders$days_since_prior_order)
@@ -240,14 +231,12 @@ ggplot(orders, aes(x=days_since_prior_order))+
 <br><br>
 
 
-
 #### 3. What are the most popular products?
-<br><br>
-By descending ordering products that are added into cart order, we find out the top 10 popular products out of 49,688 products as shown below. Surprisely, in our analysis, the top No.1 popular product is Organic 100% Grapefruit Juice.
+<br>
+By descending ordering products that are added into cart order, we find out the top 10 popular products out of 49,688 products as shown below. Surprisely, in our analysis, the top No.1 popular product is Organic Ezekiel 49 Bread Cinnamon Raisin.
 
 It is important to find out what products people like to order and order the most, by doing so, we can have better prediction and preparation on the stock of these products. 
 In our next steps, we will find out which departmants and aisles these products belong to, and how often do these top products reorder?
-
 <br><br>
 ```{r}
 inner_join(order_products_prior, products, by =c("product_id"))%>%
@@ -258,18 +247,16 @@ inner_join(order_products_prior, products, by =c("product_id"))%>%
         geom_bar(aes(reorder(product_name,-add_to_cart_order),add_to_cart_order, fill= add_to_cart_order),
         stat = "identity", color = "grey", fill = "#00BFC4") +
         labs(title = "Most Popular Products Added to Cart Order", x = "product names", y = "add to cart order") +
-        theme(axis.text.x = element_text(angle = 65, hjust = 1))
+        theme(axis.text.x = element_text(angle = 70, hjust = 1))
 
 ```
 <br><br>
 
-To recommend the next item an user is most likely to add to his/ her cart, we have to understand how each group of users use the service. It becomes a classification problem that we can explore later, but for now we wanted to see how different users purchase products, how there can be correlation between their total number of orders, days since prior order, no. of items they add to their cart and their probability of reordering.
-<br><br>
 
 ### 4. Which Users Reorder?
-
+<br>
 To recommend the next item an user is most likely to add to his/ her cart, we have to understand how each group of users use the service. It becomes a classification problem that we can explore later, but for now we wanted to see how different users purchase products, how there can be correlation between their total number of orders, days since prior order, no. of items they add to their cart and their probability of reordering.   
-
+<br>
 ```{r}
 #user clusters
 n_items_per_order <- OrderProductPrior %>% group_by(order_id) %>% mutate(n_items=max(add_to_cart_order))
@@ -279,15 +266,11 @@ user <- n_items_per_order %>%
   summarize(total_orders = n_distinct(order_id), avg_days_since_prior_order= mean(days_since_prior_order, na.rm = TRUE), avg_no_items = mean(n_items), avg_reorder=mean(reordered))
 head(user)
 ```
-<br>
-
-
-It seems many of the most popular products are healthy vegetables and fruit. This could be direction for target advertising.
 <br><br>
 
-
+<br>
 So what we can see from the table the people who have ordered more number of times, they have higher possibility of reordering the same products and they usually order after every three to four weeks. Which means that the products that gets ordered more will also have the higher probablity of being reordered.
-
+<br>
 
 ```{r}
 order_products_train %>% 
@@ -299,13 +282,14 @@ order_products_train %>%
   coord_cartesian(xlim=c(0,2000))
 
 ```
-
+<br><br>
 
 
 #### 5. Most popular department and most popular aisle?
 
+<br>
 So we wanted to see which are the most popular departments and aisles, as aparently these are the same department and aisles where will most reorder must occur. Later we can also find if which other product has the more probablity of being purchased with other. We can find that using association rule mining. To see the most popular departments and aisles we create a treemap where the size of the boxes shows the number of sales.
-
+<br>
 ```{r message=FALSE}
 library(treemap)
 tmp <- products %>%
@@ -326,7 +310,7 @@ order_products_train %>%
 ```
 
 <br><br>
-What we can see is produce, diary eggs are the most popular departments followed by snacks, pantry and others. But talking about departments, organic and non organic sector divides US consumers in a large way these days. So it will be interesting to see which products get most reordered.
+What we can see is produce, produce and diary eggs are the most popular departments followed by snacks, pantry and others. But talking about departments, organic and non organic sector divides US consumers in a large way these days. So it will be interesting to see which products get most reordered.
 
 <br>
 
@@ -347,6 +331,7 @@ OrderProductTrain_log<-orders%>%inner_join(order_products_train)%>%inner_join(pr
 OrderProductTrain_log<-drop_na(OrderProductTrain_log)
 OrderProductTrain_log<-OrderProductTrain_log[-c(3)]
 ```
+<br><br>
 
 <br>
 We perform logistic regression to predict the variable 'reorder'. Since it is a binary variable with 2 classes,1 and 0, it becomes a classification problem.
@@ -364,9 +349,11 @@ head(reorder_log)
 ```
 <br><br>
 
-So we created a new dataframe dropped the user_id and use all the other columns to predict the reorders with logistic regression. Our regression depends variables such as the total number orders a user has, after how many days he is ordering, how many products he is adding to the cart, which day he is ordering and which products usually get reordered. For a example if a user usually shops bi weekly, on sunday and orders milk; he might have very less chances of ordering milk if he is back withing 2 or 3 days of his last purchase.
+<br>
+So we created a new dataframe dropped the user_id and use all the other columns to predict the reorders with logistic regression. Our regression depends variables such as the total number orders a user has, after how many days he is ordering, how many products he is adding to the cart, which day he is ordering, and which products usually get reordered. For a example if a user usually shops bi weekly, on sunday and orders milk; he might have very less chances of ordering milk if he is back within 2 or 3 days of his last purchase.
+<br>
 
-#### Model
+#### Building Model
 We use glm with family="binomial" to create the model. We use all of the variables for this model.
 ```{r}
 #Fitting a binary logistic regression
@@ -377,11 +364,10 @@ summary(log_model)
 ```
 
 
-#### Predicting using the model
+#### Predicting the model
 
 We predict the reorder variable using predict function.
 ```{r}
-library(e1071)
 user2 <- OrderProductTrain_log %>% 
   group_by(user_id) %>% 
   mutate(days_since_prior_order = as.numeric(days_since_prior_order)) %>%
@@ -411,7 +397,7 @@ Accuracy
 <br><br>
 
 <br>
-Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 54% accuracy, which is okay. But, it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
+Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the accuracy. As we can see from the result, the prediction of the logistic model is 54% accuracy, which is okay. But it doesn’t reveal much information about how well the model actually did in predicting the 1’s and 0’s independently.
 <br>
 
 
@@ -420,8 +406,8 @@ Prediction on the dataset, if p>0.5 then class as 1, otherwise 0 and check the a
 ```{r}
 cm 
 ```
-Sensitivity is the percentage of actual 1’s that were correctly predicted. It shows what percentage of 1’s were covered by the model. The sensitivity is 69.69%, which is okay.
-Likewise, Specificity is the proportion of actual 0’s that were correctly predicted. So in this case, it is 42.77%, which does not perform well.
+Sensitivity is the percentage of actual 1’s that were correctly predicted. It shows what percentage of 1’s was covered by the model. The sensitivity is 69.69%, which is okay.
+Likewise, Specificity is the proportion of actual 0’s that were correctly predicted. In this case, it is 42.77%, which does not perform well.
 <br><br>
 
 
@@ -439,12 +425,11 @@ glmmod <- glmnet(x, y=as.factor(OrderProductPrior_log$reordered), alpha=1, famil
 <br><br>
 
 ##### Lasso plot and ROC
-
-
-Each colored line in the lasso plot represents the value taken by a different coefficient in the model. Lambda is the weight given to the regularization term (the L1 norm), so as lambda approaches zero, the loss function of your model approaches the OLS loss function (David Marx,2013).
+<br>
+Each colored line in the lasso plot represents the value taken by a different coefficient in the model. Lambda is the weight given to the regularization term (the L1 norm), so as lambda approaches zero, the loss function of your model approaches the OLS loss function (David Marx,2013). <br>
 
 The second plot is the ROC. It shows the lambda values and their MSE. $\lambda$min and $\lambda$1se are both shown by the vertical line.
-<br>
+<br><br>
 
 ```{r}
 # Plot variable coefficients vs. shrinkage parameter lambda.
@@ -458,13 +443,12 @@ sprintf("Minimum value of lambda that minimizes mean CV error: %# .7f", ROCcurve
 
 
 ```
-
 <br><br>
 
 ####  Get estimated beta matrix
 
+<br>
 Using the min lambda value found, we find the estimated beta matrix. This shows which coefficients have been shrunk to zero and which still exist. This shows which are the important variables that explain the variation in the dependent variable y. 
-
 <br>
 
 ```{r}
@@ -489,9 +473,7 @@ model_1se$beta
 ```
 
 <br><br>
-
 More variables are removed upon using the lambda 1 standard deviation away. The 1 se rule is a standard one when performing lasso regression. The main point of the 1 SE rule is to choose the simplest model whose accuracy is comparable with the best model, according to (Friedman, Hastie, and Tibshirani,2010).
-
 <br><br>
 
 
