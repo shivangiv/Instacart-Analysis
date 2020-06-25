@@ -262,8 +262,8 @@ user <- n_items_per_order %>%
   summarize(total_orders = n_distinct(order_id), avg_days_since_prior_order= mean(days_since_prior_order, na.rm = TRUE), avg_no_items = mean(n_items), avg_reorder=mean(reordered))
 head(user)
 ```
+<br>
 
-<br><br>
 
 It seems many of the most popular products are healthy vegetables and fruit. This could be direction for target advertising.
 <br><br>
@@ -309,38 +309,9 @@ order_products_train %>%
 ```
 
 <br><br>
-What we can see is produce, diary eggs are the most popular departments followed by snacks, pantry and others. But talking about departments, organic and non organic sector divides US consumers in a large way these days. So it will be interesting to see which products get most reordered. But at first we take a look at ration between the number of organic and non-organic foods.
+What we can see is produce, diary eggs are the most popular departments followed by snacks, pantry and others. But talking about departments, organic and non organic sector divides US consumers in a large way these days. So it will be interesting to see which products get most reordered.
 
 <br>
-
-```{r warning=FALSE}
-products<-products %>% 
-    mutate(organic=ifelse(str_detect(str_to_lower(products$product_name),'organic'),"organic","not organic"), organic= as.factor(organic))
-    
- order_products_train %>% 
-  left_join(products, by="product_id") %>% 
-  group_by(organic) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = count/sum(count))%>% 
-  ggplot(aes(x=organic,y=count, fill=organic))+
-  geom_bar(stat="identity")
-```
-
-<br><br>
-So what we notice is the amount og non organic brands is way higher, as it is cheaper to produce and demand must be high as well. Then we try to find out which kind gets most reordered.
-<br>
-
-```{r}
-order_products_train %>% left_join(products,by="product_id") %>% 
-  group_by(organic) %>% summarize(mean_reordered = mean(reordered))%>%
-  ggplot(aes(x=organic,fill=organic,y=mean_reordered))+geom_bar(stat="identity")
-```
-
-What we get to see is organic foods are reordered in a much higher quantity. It could be because the people who active look for organic brands, they must have a much higher brand loyalty which makes it more prbable to be reordered.
-
-<br><br>
-
-
 
 
 <center>
@@ -508,10 +479,12 @@ More variables are removed upon using the lambda 1 standard deviation away. The 
 
 
 <center>
-$\large Association Rules Mining$ </center>
+$\large Association~Rules~Mining$ </center>
+
 <br><br>
 
 For the Market Basket Analysis, only the order_products__prior and product are utilized and the same are joined on basis of product id. 
+<br>
 ```{r}
 
 basket_data <- left_join(OrderProductPrior, products, by='product_id')%>%
@@ -529,7 +502,18 @@ head(transactions)
 length(transactions)
 ```
 
+#### Setting the Support and Confidence Intervals<br>
 
+Understanding support<br>
+
+A value of Support =0.02 means that an item will be considered as frequent if at least 2 percent of all the baskets contain it.
+
+Understanding Confidence<br>
+
+Confidence is a measure of the strength of an association rule. It is the frequency of occurrence of the right-hand items in the rule from among those baskets that contain the items on the left-hand side of the rule.
+
+So now we have created a function that will plot the number of rules we can generate depending on different support levels and varied upon different confidence levels. 
+<br>
 ```{r}
 # Support and confidence values
 supportLevels <- c(0.1, 0.05, 0.01, 0.005)
@@ -628,7 +612,7 @@ plot(rules2, method = "grouped", control = list(k = 5))
 <br><br>
 
 
-
+#### Association Rules Mining using Gradient Boosting
 
 ```{r}
 # xgboost- Gradient Boosting
