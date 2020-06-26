@@ -84,14 +84,17 @@ library(caret)
 library(glmnet)
 library(e1071)
 
+source_code_filepath<-"readandsampledata.R" 
+cat("Loading file ", source_code_filepath, "\n")
+source(file=source_code_filepath)
 
 #using fread because it reads data very fast
-aisles<-fread("instacart-market-basket-analysis/aisles.csv")
-departments<-fread("instacart-market-basket-analysis/departments.csv")
-order_products_prior<-fread("instacart-market-basket-analysis/order_products__prior.csv")
-order_products_train<-fread("instacart-market-basket-analysis/order_products__train.csv")
-orders<-fread("instacart-market-basket-analysis/orders.csv")
-products<-fread("instacart-market-basket-analysis/products.csv")
+# aisles<-fread("instacart-market-basket-analysis/aisles.csv")
+# departments<-fread("instacart-market-basket-analysis/departments.csv")
+# order_products_prior<-fread("instacart-market-basket-analysis/order_products__prior.csv")
+# order_products_train<-fread("instacart-market-basket-analysis/order_products__train.csv")
+# orders<-fread("instacart-market-basket-analysis/orders.csv")
+# products<-fread("instacart-market-basket-analysis/products.csv")
 
 ```
 <br><br>
@@ -108,6 +111,7 @@ Since the dataset is very large, with Prior orders having 32 million rows, we su
 <br>
 
 ```{r}
+
 set.seed(123)
 user_fraction <- 0.1
 users <- unique(orders$user_id)
@@ -129,6 +133,8 @@ OrderProductTrain<-drop_na(OrderProductTrain)
 
 order_products_prior<-order_products_prior%>%semi_join(orders)
 order_products_train<-order_products_train%>%semi_join(orders)
+
+sampling()
 dim(order_products_prior)
 dim(order_products_train)
 
@@ -165,11 +171,13 @@ sapply(departments,class)
 sapply(order_products_prior,class)
 sapply(order_products_train,class)
 sapply(orders,class)
+
+
 orders<-orders %>%mutate(order_hour_of_day=as.numeric(order_hour_of_day))
-head(orders)
 sapply(products,class)
 
 #We recode and convert character variables to factors.
+orders<-orders %>%mutate(order_hour_of_day=as.numeric(order_hour_of_day))
 orders$eval_set <-as.factor(orders$eval_set)
 aisles$aisle <- as.factor(aisles$aisle)
 departments$department <- as.factor(departments$department)
