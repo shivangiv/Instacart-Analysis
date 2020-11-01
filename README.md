@@ -7,3 +7,5 @@
 [Tree based models](https://github.com/shivangiv/Instacart-Analysis/blob/master/InstacartTreebasedModels.Rmd)
 
 [Gradient Boosting Model](https://github.com/shivangiv/Instacart-Analysis/blob/master/GradientBoostingMachine.Rmd)
+
+[Association Rules Minig](https://github.com/shivangiv/Instacart-Analysis/blob/master/MarketBasketAnalysis.Rmd)
